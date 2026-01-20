@@ -70,25 +70,21 @@ def find_best_match_column(df_columns, target_keywords):
         target_keywords = [target_keywords]
 
     for keyword in target_keywords:
-        # Clean the target keyword once
         cleaned_keyword = re.sub(r'[^a-z0-9_]', '', keyword.strip().lower()).strip('_')
-        for df_col_cleaned in df_columns: # df_columns are assumed to be already cleaned here
-            # Check for exact match
+        for df_col_cleaned in df_columns:
             if df_col_cleaned == cleaned_keyword:
                 return df_col_cleaned
-            # Check if df_col_cleaned starts with the keyword
             if df_col_cleaned.startswith(cleaned_keyword):
                 return df_col_cleaned
-            # Check if keyword is part of df_col_cleaned
             if cleaned_keyword in df_col_cleaned:
                 return df_col_cleaned
     return None
 
-
-def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, consolidated_output_file_path):
+# Modified to return PISA/ESM/PM7 consolidated data and Workon data separately
+def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, main_consolidated_output_file_path):
     """
-    Reads PISA, ESM, PM7, and Workon P71 data, filters PISA, consolidates data,
-    and saves it to a new Excel file.
+    Reads PISA, ESM, PM7, and Workon P71 data, filters PISA, consolidates data.
+    Returns df_consolidated_main (PISA/ESM/PM7) and df_consolidated_workon.
     """
     print("Starting data consolidation process...")
     print("All input DataFrames loaded successfully!")
@@ -98,7 +94,8 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, consolidated_ou
     df_pm7 = clean_column_names(df_pm7.copy())
     df_workon = clean_column_names(df_workon.copy()) # Clean Workon P71 columns
 
-    all_consolidated_rows = []
+    main_consolidated_rows = []
+    workon_consolidated_rows = [] # Separate list for Workon rows
     today_date = datetime.now()
     today_date_formatted = today_date.strftime("%m/%d/%Y")
 
@@ -130,7 +127,7 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, consolidated_ou
                 'Region': None,
                 'Processor': None, 'Category': None
             }
-            all_consolidated_rows.append(new_row)
+            main_consolidated_rows.append(new_row)
         print(f"Collected {len(df_pisa_filtered)} rows from PISA.")
 
     # --- ESM Processing ---
@@ -155,7 +152,7 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, consolidated_ou
                 'Processor': None,
                 'Category': None
             }
-            all_consolidated_rows.append(new_row)
+            main_consolidated_rows.append(new_row)
         print(f"Collected {len(df_esm)} rows from ESM.")
 
     # --- PM7 Processing ---
@@ -180,11 +177,10 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, consolidated_ou
                 'Region': None,
                 'Processor': None, 'Category': None
             }
-            all_consolidated_rows.append(new_row)
+            main_consolidated_rows.append(new_row)
         print(f"Collected {len(df_pm7)} rows from PM7.")
 
     # --- Workon P71 Processing ---
-    # Map desired Workon P71 columns to their *cleaned* names
     workon_column_map = {
         'Barcode': find_best_match_column(df_workon.columns, ['key']),
         'Category': find_best_match_column(df_workon.columns, ['action']),
@@ -198,7 +194,6 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, consolidated_ou
         'Remarks': find_best_match_column(df_workon.columns, ['summary']),
     }
 
-    # Check if essential columns are found for Workon P71
     essential_workon_keys = ['Barcode', 'Category', 'Company code', 'Region', 'Vendor number', 'Vendor Name', 'Status', 'Received Date', 'Requester', 'Remarks']
     missing_workon_cols = [col_key for col_key in essential_workon_keys if workon_column_map[col_key] is None]
 
@@ -208,8 +203,8 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, consolidated_ou
         for index, row in df_workon.iterrows():
             new_row = {
                 'Barcode': row.get(workon_column_map['Barcode']),
-                'Processor': 'Jayapal',  # Fixed string
-                'Channel': 'Workon',     # Fixed string
+                'Processor': 'Jayapal',
+                'Channel': 'Workon',
                 'Category': row.get(workon_column_map['Category']),
                 'Company code': row.get(workon_column_map['Company code']),
                 'Region': row.get(workon_column_map['Region']),
@@ -217,82 +212,116 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, consolidated_ou
                 'Vendor Name': row.get(workon_column_map['Vendor Name']),
                 'Status': row.get(workon_column_map['Status']),
                 'Received Date': row.get(workon_column_map['Received Date']),
-                'Re-Open Date': None, # Blank
-                'Allocation Date': today_date_formatted, # Today's date
-                'Clarification Date': None, # Blank
-                'Completion Date': None, # Blank
+                'Re-Open Date': None,
+                'Allocation Date': today_date_formatted,
+                'Clarification Date': None,
+                'Completion Date': None,
                 'Requester': row.get(workon_column_map['Requester']),
                 'Remarks': row.get(workon_column_map['Remarks']),
-                'Aging': None, # Blank
-                'Today': today_date # Today's date
+                'Aging': None,
+                'Today': today_date
             }
-            all_consolidated_rows.append(new_row)
+            workon_consolidated_rows.append(new_row)
         print(f"Collected {len(df_workon)} rows from Workon P71.")
 
-
-    if not all_consolidated_rows:
-        return False, "No data collected for consolidation from any source."
-
-    df_consolidated = pd.DataFrame(all_consolidated_rows)
-
+    # Process main consolidated data (PISA/ESM/PM7)
+    df_consolidated_main = pd.DataFrame(main_consolidated_rows)
     for col in CONSOLIDATED_OUTPUT_COLUMNS:
-        if col not in df_consolidated.columns:
-            df_consolidated[col] = None
+        if col not in df_consolidated_main.columns:
+            df_consolidated_main[col] = None
+    df_consolidated_main = df_consolidated_main[CONSOLIDATED_OUTPUT_COLUMNS]
 
-    df_consolidated = df_consolidated[CONSOLIDATED_OUTPUT_COLUMNS]
+    # Process Workon consolidated data
+    df_consolidated_workon = pd.DataFrame(workon_consolidated_rows)
+    for col in CONSOLIDATED_OUTPUT_COLUMNS:
+        if col not in df_consolidated_workon.columns:
+            df_consolidated_workon[col] = None
+    df_consolidated_workon = df_consolidated_workon[CONSOLIDATED_OUTPUT_COLUMNS]
 
-    date_cols_to_process = ['Received Date', 'Re-Open Date', 'Allocation Date', 'Completion Date', 'Clarification Date', 'Today']
-    for col in df_consolidated.columns:
-        if col in date_cols_to_process:
-            df_consolidated[col] = format_date_to_mdyyyy(df_consolidated[col])
-        else:
-            # Handle potential NaNs for object/string columns before setting to ''
-            if df_consolidated[col].dtype == 'object':
-                df_consolidated[col] = df_consolidated[col].fillna('')
-            elif col in ['Barcode', 'Company code', 'Vendor number']:
-                df_consolidated[col] = df_consolidated[col].astype(str).replace('nan', '')
 
+    # Apply date formatting and fillna for both DFs separately
+    # NOTE: These are the *intermediate* consolidated dataframes. The final formatting
+    # will happen at the very end of process_central_file_step3.
+    # This prevents double formatting of dates which can cause issues.
+    # For now, let's keep the date objects as datetime objects or original type
+    # and only format them to string MM/DD/YYYY at the final step.
+    # So, temporarily removing date formatting here.
+
+    for df in [df_consolidated_main, df_consolidated_workon]:
+        for col in CONSOLIDATED_OUTPUT_COLUMNS:
+            # If it's a date column, ensure it's datetime, but don't format to string yet
+            if col in ['Received Date', 'Re-Open Date', 'Allocation Date', 'Completion Date', 'Clarification Date', 'Today']:
+                df[col] = pd.to_datetime(df[col], errors='coerce')
+            # For other columns, fillna for consistency
+            else:
+                if df[col].dtype == 'object':
+                    df[col] = df[col].fillna('')
+                elif col in ['Barcode', 'Company code', 'Vendor number']:
+                    df[col] = df[col].astype(str).replace('nan', '')
+
+
+    # Save a temporary consolidated file (optional, for debugging/intermediate view)
     try:
-        df_consolidated.to_excel(consolidated_output_file_path, index=False)
-        print(f"Consolidated file saved to: {consolidated_output_file_path}")
+        # Save main consolidated file. This is the one used for the "main" processing flow.
+        # Format dates to string only for this intermediate save if needed for user review.
+        # Otherwise, keep as datetime objects until the final step.
+        # For now, let's pass a copy with formatted dates to save, keeping original for further processing.
+        df_consolidated_main_for_save = df_consolidated_main.copy()
+        for col in ['Received Date', 'Re-Open Date', 'Allocation Date', 'Completion Date', 'Clarification Date', 'Today']:
+            if col in df_consolidated_main_for_save.columns:
+                df_consolidated_main_for_save[col] = format_date_to_mdyyyy(df_consolidated_main_for_save[col])
+        df_consolidated_main_for_save.to_excel(main_consolidated_output_file_path, index=False)
+        print(f"Main consolidated file (PISA/ESM/PM7) saved to: {main_consolidated_output_file_path}")
     except Exception as e:
-        return False, f"Error saving consolidated file: {e}"
-    print("--- Consolidated Data Process Complete ---")
-    return True, df_consolidated
+        return False, f"Error saving main consolidated file: {e}"
 
-def process_central_file_step2_update_existing(consolidated_df, central_file_input_path):
+    print("--- Consolidated Data Process Complete ---")
+    # Return both dataframes as datetime objects for further processing
+    return True, (df_consolidated_main, df_consolidated_workon)
+
+def process_central_file_step2_update_existing(consolidated_main_df, central_file_input_path):
     """
-    Step 2: Updates status of *existing* central file records based on consolidated data.
+    Step 2: Updates status of *existing* central file records based on consolidated_main data (PISA/ESM/PM7).
     """
     print(f"\n--- Starting Central File Status Processing (Step 2: Update Existing Barcodes) ---")
 
     try:
         converters = {'Barcode': str, 'Vendor number': str, 'Company code': str}
+        # Read central file, convert relevant columns to string to prevent type issues
         df_central = pd.read_excel(central_file_input_path, converters=converters, keep_default_na=False)
         df_central_cleaned = clean_column_names(df_central.copy())
 
-        print("Consolidated (DF) and Central (file) loaded successfully for Step 2!")
-    except Exception as e:
-        return False, f"Error loading Consolidated (DF) or Central (file) for processing (Step 2): {e}"
+        # Ensure date columns in df_central are parsed correctly for comparison (if needed)
+        # But here we mostly care about 'status' and 'barcode'
+        for col in ['received_date', 're_open_date', 'allocation_date', 'completion_date', 'clarification_date', 'today']:
+            if col in df_central_cleaned.columns:
+                df_central_cleaned[col] = pd.to_datetime(df_central_cleaned[col], errors='coerce')
 
-    if 'Barcode' not in consolidated_df.columns:
-        return False, "Error: 'Barcode' column not found in the consolidated file. Cannot proceed with central file processing (Step 2)."
+
+        print("Main Consolidated (DF) and Central (file) loaded successfully for Step 2!")
+    except Exception as e:
+        return False, f"Error loading Main Consolidated (DF) or Central (file) for processing (Step 2): {e}"
+
+    if 'Barcode' not in consolidated_main_df.columns:
+        return False, "Error: 'Barcode' column not found in the main consolidated file. Cannot proceed with central file processing (Step 2)."
     if 'barcode' not in df_central_cleaned.columns or 'status' not in df_central_cleaned.columns:
         return False, "Error: 'barcode' or 'status' column not found in the central file after cleaning. Cannot update status (Step 2)."
 
-    consolidated_df['Barcode'] = consolidated_df['Barcode'].astype(str)
+    consolidated_main_df['Barcode'] = consolidated_main_df['Barcode'].astype(str)
     df_central_cleaned['barcode'] = df_central_cleaned['barcode'].astype(str)
 
     df_central_cleaned['Barcode_compare'] = df_central_cleaned['barcode']
 
-    consolidated_barcodes_set = set(consolidated_df['Barcode'].unique())
-    print(f"Found {len(consolidated_barcodes_set)} unique barcodes in the consolidated file for Step 2.")
+    # ONLY use PISA/ESM/PM7 barcodes for comparison here
+    consolidated_main_barcodes_set = set(consolidated_main_df['Barcode'].unique())
+    print(f"Found {len(consolidated_main_barcodes_set)} unique barcodes in the main consolidated file for Step 2.")
 
     def transform_status_if_barcode_exists(row):
         central_barcode = str(row['Barcode_compare'])
         original_central_status = row['status']
 
-        if central_barcode in consolidated_barcodes_set:
+        # Only affect status if the barcode exists in PISA/ESM/PM7 consolidated data
+        if central_barcode in consolidated_main_barcodes_set:
             if pd.isna(original_central_status) or \
                (isinstance(original_central_status, str) and original_central_status.strip().lower() in ['', 'n/a', 'na', 'none']):
                 return original_central_status
@@ -303,7 +332,7 @@ def process_central_file_step2_update_existing(consolidated_df, central_file_inp
             elif status_str == 'completed':
                 return 'Reopen'
             elif status_str == 'n/a':
-                return 'New' # This rule seems specific, previously 'N/A' to 'New' was for new records, here it's an update. Keeping as per original
+                return 'New'
             else:
                 return original_central_status
         else:
@@ -328,23 +357,17 @@ def process_central_file_step2_update_existing(consolidated_df, central_file_inp
         cols_to_rename = {k: v for k, v in common_cols_map.items() if k in df_central_cleaned.columns}
         df_central_cleaned.rename(columns=cols_to_rename, inplace=True)
 
-        date_cols_in_central_file = [
-            'Received Date', 'Re-Open Date', 'Allocation Date',
-            'Completion Date', 'Clarification Date', 'Today'
-        ]
-        for col in df_central_cleaned.columns:
-            if col in date_cols_in_central_file:
-                df_central_cleaned[col] = format_date_to_mdyyyy(df_central_cleaned[col])
-            elif df_central_cleaned[col].dtype == 'object':
-                df_central_cleaned[col] = df_central_cleaned[col].fillna('')
-            elif col in ['Barcode', 'Vendor number']:
-                df_central_cleaned[col] = df_central_cleaned[col].astype(str).replace('nan', '')
-            if col == 'Company code':
-                 df_central_cleaned[col] = df_central_cleaned[col].astype(str).replace('nan', '')
-
+        # Ensure columns are consistently typed before going to step3 (dates as datetime objects)
         for col in CONSOLIDATED_OUTPUT_COLUMNS:
             if col not in df_central_cleaned.columns:
                 df_central_cleaned[col] = None
+            if col in ['Received Date', 'Re-Open Date', 'Allocation Date', 'Completion Date', 'Clarification Date', 'Today']:
+                df_central_cleaned[col] = pd.to_datetime(df_central_cleaned[col], errors='coerce')
+            elif col in ['Barcode', 'Vendor number', 'Company code']:
+                df_central_cleaned[col] = df_central_cleaned[col].astype(str).replace('nan', '')
+            elif df_central_cleaned[col].dtype == 'object':
+                df_central_cleaned[col] = df_central_cleaned[col].fillna('')
+
 
     except Exception as e:
         return False, f"Error processing central file (Step 2): {e}"
@@ -352,21 +375,21 @@ def process_central_file_step2_update_existing(consolidated_df, central_file_inp
     return True, df_central_cleaned
 
 
-def process_central_file_step3_final_merge_and_needs_review(consolidated_df, updated_existing_central_df, final_central_output_file_path, df_pisa_original, df_esm_original, df_pm7_original, df_workon_original, region_mapping_df):
+# Modified to accept Workon data as a separate DataFrame to append
+def process_central_file_step3_final_merge_and_needs_review(consolidated_main_df, consolidated_workon_df, updated_existing_central_df, final_central_output_file_path, df_pisa_original, df_esm_original, df_pm7_original, region_mapping_df):
     """
-    Step 3: Handles barcodes present only in consolidated (adds them as new)
+    Step 3: Handles barcodes present only in consolidated_main (adds them as new)
             and barcodes present only in central (marks them as 'Needs Review' if not 'Completed').
+            Then directly appends consolidated_workon_df.
             Also performs region mapping and final column reordering.
     """
     print(f"\n--- Starting Central File Status Processing (Step 3: Final Merge & Needs Review) ---")
 
-    # Clean original DFs for lookup purposes
+    # Only create lookups for PISA, ESM, PM7 for enrichment of their new records
     df_pisa_lookup = clean_column_names(df_pisa_original.copy())
     df_esm_lookup = clean_column_names(df_esm_original.copy())
     df_pm7_lookup = clean_column_names(df_pm7_original.copy())
-    df_workon_lookup_cleaned = clean_column_names(df_workon_original.copy()) # Clean for consistent lookup
 
-    # Create indexed versions for quick lookups
     df_pisa_indexed = pd.DataFrame()
     if 'barcode' in df_pisa_lookup.columns:
         df_pisa_lookup['barcode'] = df_pisa_lookup['barcode'].astype(str)
@@ -391,43 +414,32 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
     else:
         print("Warning: 'barcode' column not found in cleaned PM7 lookup. Cannot perform PM7 lookups.")
 
-    df_workon_indexed = pd.DataFrame()
-    # Now, find_best_match_column should be called on the *already cleaned* df_workon_lookup_cleaned.columns
-    workon_key_col_cleaned = find_best_match_column(df_workon_lookup_cleaned.columns, ['key'])
-    if workon_key_col_cleaned:
-        df_workon_lookup_cleaned[workon_key_col_cleaned] = df_workon_lookup_cleaned[workon_key_col_cleaned].astype(str)
-        df_workon_indexed = df_workon_lookup_cleaned.set_index(workon_key_col_cleaned) # Use the CLEANED column name here
-        print(f"Workon P71 lookup indexed by '{workon_key_col_cleaned}'.")
-    else:
-        print("Warning: 'key' column not found in Workon P71 (after cleaning). Cannot perform Workon P71 lookups for enrichment.")
-
-
-    if 'Barcode' not in consolidated_df.columns:
-        return False, "Error: 'Barcode' column not found in the consolidated file. Cannot proceed with final central file processing (Step 3)."
+    # --- Process PISA/ESM/PM7 for new records and Needs Review ---
+    # consolidated_main_df is already prepared and contains PISA/ESM/PM7 data as datetime objects
+    if 'Barcode' not in consolidated_main_df.columns:
+        return False, "Error: 'Barcode' column not found in the main consolidated file. Cannot proceed with final central file processing (Step 3)."
     if 'Barcode' not in updated_existing_central_df.columns or 'Status' not in updated_existing_central_df.columns:
         return False, "Error: 'Barcode' or 'Status' column not found in the updated central file. Cannot update status (Step 3)."
 
-    consolidated_barcodes_set = set(consolidated_df['Barcode'].unique())
+    consolidated_main_barcodes_set = set(consolidated_main_df['Barcode'].unique())
     central_barcodes_set = set(updated_existing_central_df['Barcode'].unique())
 
-    barcodes_to_add = consolidated_barcodes_set - central_barcodes_set
-    print(f"Found {len(barcodes_to_add)} new barcodes in consolidated file to add to central.")
+    barcodes_to_add = consolidated_main_barcodes_set - central_barcodes_set
+    print(f"Found {len(barcodes_to_add)} new barcodes from PISA/ESM/PM7 to add to central.")
 
-    df_new_records_from_consolidated = consolidated_df[consolidated_df['Barcode'].isin(barcodes_to_add)].copy()
+    df_new_records_from_main_consolidated = consolidated_main_df[consolidated_main_df['Barcode'].isin(barcodes_to_add)].copy()
 
     all_new_central_rows_data = []
 
-    for index, row_consolidated in df_new_records_from_consolidated.iterrows():
-        barcode = str(row_consolidated['Barcode']) # Ensure barcode is string for lookups
+    for index, row_consolidated in df_new_records_from_main_consolidated.iterrows():
+        barcode = str(row_consolidated['Barcode'])
         channel = row_consolidated['Channel']
 
-        # Initialize with values directly from the already-processed consolidated row.
-        # This is the crucial correction. For Workon, these values are already finalized.
-        # For PISA/ESM/PM7, these are initial values that can be enriched.
+        # Initialize with values from consolidated_main_df, then try to enrich from original sources
         vendor_name = row_consolidated.get('Vendor Name')
         vendor_number = row_consolidated.get('Vendor number')
         company_code = row_consolidated.get('Company code')
-        received_date = row_consolidated.get('Received Date') # This is already formatted date str if from consolidated_df
+        received_date = row_consolidated.get('Received Date') # This is a datetime object
         processor = row_consolidated.get('Processor')
         category = row_consolidated.get('Category')
         requester = row_consolidated.get('Requester')
@@ -444,7 +456,7 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
             if 'company_code' in pisa_row.index and pd.notna(pisa_row['company_code']):
                 company_code = pisa_row['company_code']
             if 'received_date' in pisa_row.index and pd.notna(pisa_row['received_date']):
-                received_date = pisa_row['received_date']
+                received_date = pisa_row['received_date'] # Can be original type, will be converted to datetime later
 
         # --- ESM Lookup ---
         elif channel == 'ESM' and not df_esm_indexed.empty and barcode in df_esm_indexed.index:
@@ -471,31 +483,38 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
                 company_code = pm7_row['company_code']
             if 'received_date' in pm7_row.index and pd.notna(pm7_row['received_date']):
                 received_date = pm7_row['received_date']
-
-        # --- Workon P71 Lookup ---
-        # NO NEED TO RE-ENRICH WORKON DATA HERE. It's already fully processed in consolidate_data_process.
-        # The variables (vendor_name, etc.) for 'Workon' channel already contain their correct values from row_consolidated.
-        # Any attempt to re-lookup df_workon_indexed here is redundant and could cause issues.
-
-        new_central_row_data = row_consolidated.to_dict() # Start with all columns from consolidated_df
-        # Override with potentially enriched values or fixed values for PISA/ESM/PM7, or use Workon's pre-set values.
-        new_central_row_data['Vendor Name'] = vendor_name if vendor_name is not None else ''
-        new_central_row_data['Vendor number'] = vendor_number if vendor_number is not None else ''
-        new_central_row_data['Company code'] = company_code if company_code is not None else ''
-        new_central_row_data['Received Date'] = received_date
-        new_central_row_data['Status'] = 'New' # New records always start as 'New'
-        new_central_row_data['Allocation Date'] = datetime.now().strftime("%m/%d/%Y") # Always today's date for new records
-        new_central_row_data['Processor'] = processor if processor is not None else ''
-        new_central_row_data['Category'] = category if category is not None else ''
-        new_central_row_data['Requester'] = requester if requester is not None else ''
-        new_central_row_data['Remarks'] = remarks if remarks is not None else ''
-        new_central_row_data['Region'] = region if region is not None else ''
-
+        
+        # New records to be added to central will have these values
+        new_central_row_data = {
+            'Barcode': barcode,
+            'Processor': processor if processor is not None else '',
+            'Channel': channel,
+            'Category': category if category is not None else '',
+            'Company code': company_code if company_code is not None else '',
+            'Region': region if region is not None else '',
+            'Vendor number': vendor_number if vendor_number is not None else '',
+            'Vendor Name': vendor_name if vendor_name is not None else '',
+            'Status': 'New', # Always 'New' for records added to central
+            'Received Date': received_date,
+            'Re-Open Date': None,
+            'Allocation Date': datetime.now(), # Datetime object for now, formatted later
+            'Clarification Date': None,
+            'Completion Date': None,
+            'Requester': requester if requester is not None else '',
+            'Remarks': remarks if remarks is not None else '',
+            'Aging': None,
+            'Today': datetime.now() # Datetime object for now, formatted later
+        }
 
         all_new_central_rows_data.append(new_central_row_data)
 
     if all_new_central_rows_data:
         df_new_central_rows = pd.DataFrame(all_new_central_rows_data)
+        # Ensure date columns are datetime objects in this new DataFrame
+        for col in ['Received Date', 'Re-Open Date', 'Allocation Date', 'Clarification Date', 'Completion Date', 'Today']:
+            if col in df_new_central_rows.columns:
+                df_new_central_rows[col] = pd.to_datetime(df_new_central_rows[col], errors='coerce')
+        # Ensure other columns are consistent
         for col in CONSOLIDATED_OUTPUT_COLUMNS:
             if col not in df_new_central_rows.columns:
                 df_new_central_rows[col] = None
@@ -503,16 +522,12 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
     else:
         df_new_central_rows = pd.DataFrame(columns=CONSOLIDATED_OUTPUT_COLUMNS)
 
-    for col in df_new_central_rows.columns:
-        if df_new_central_rows[col].dtype == 'object':
-            df_new_central_rows[col] = df_new_central_rows[col].fillna('')
-        elif col in ['Barcode', 'Company code', 'Vendor number']:
-            df_new_central_rows[col] = df_new_central_rows[col].astype(str).replace('nan', '')
-
-    barcodes_for_needs_review = central_barcodes_set - consolidated_barcodes_set
-    print(f"Found {len(barcodes_for_needs_review)} barcodes in central not in consolidated.")
-
+    # df_final_central starts with the updated existing central records
     df_final_central = updated_existing_central_df.copy()
+
+    # Apply 'Needs Review' logic to existing central records not in PISA/ESM/PM7 consolidated
+    barcodes_for_needs_review = central_barcodes_set - consolidated_main_barcodes_set
+    print(f"Found {len(barcodes_for_needs_review)} barcodes in central not in PISA/ESM/PM7 consolidated to mark 'Needs Review'.")
 
     needs_review_barcode_mask = df_final_central['Barcode'].isin(barcodes_for_needs_review)
     is_not_completed_status_mask = ~df_final_central['Status'].astype(str).str.strip().str.lower().eq('completed')
@@ -521,29 +536,38 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
     df_final_central.loc[final_needs_review_condition, 'Status'] = 'Needs Review'
     print(f"Updated {final_needs_review_condition.sum()} records to 'Needs Review' where status was not 'Completed'.")
 
-    for col in CONSOLIDATED_OUTPUT_COLUMNS:
-        if col not in df_final_central.columns:
-            df_final_central[col] = None
-    df_final_central = df_final_central[CONSOLIDATED_OUTPUT_COLUMNS]
-
+    # Concatenate new records from PISA/ESM/PM7
     df_final_central = pd.concat([df_final_central, df_new_central_rows], ignore_index=True)
 
-    # --- NEW LOGIC START: Handle blank Company Code for PM7 channel ---
+    # --- Append Workon P71 data directly ---
+    if not consolidated_workon_df.empty:
+        # consolidated_workon_df is already prepared with correct mappings and types (datetime for dates)
+        # Ensure it has all CONSOLIDATED_OUTPUT_COLUMNS before concat
+        for col in CONSOLIDATED_OUTPUT_COLUMNS:
+            if col not in consolidated_workon_df.columns:
+                consolidated_workon_df[col] = None
+        consolidated_workon_df = consolidated_workon_df[CONSOLIDATED_OUTPUT_COLUMNS] # Reorder columns
+        df_final_central = pd.concat([df_final_central, consolidated_workon_df], ignore_index=True)
+        print(f"Appended {len(consolidated_workon_df)} rows from Workon P71 directly to the final central file.")
+    else:
+        print("No Workon P71 data to append.")
+
+
+    # --- Handle blank Company Code for PM7 channel (Applies to all new/appended data) ---
     print("\n--- Applying PM7 Company Code population logic ---")
     if 'Channel' in df_final_central.columns and 'Company code' in df_final_central.columns and 'Barcode' in df_final_central.columns:
         pm7_blank_cc_mask = (df_final_central['Channel'] == 'PM7') & \
                             (df_final_central['Company code'].astype(str).replace('nan', '').str.strip() == '')
 
-        # Apply logic: take first 4 digits of Barcode
         df_final_central.loc[pm7_blank_cc_mask, 'Company code'] = \
             df_final_central.loc[pm7_blank_cc_mask, 'Barcode'].astype(str).str[:4]
 
         print(f"Populated Company Code for {pm7_blank_cc_mask.sum()} PM7 records based on Barcode.")
     else:
         print("Warning: 'Channel', 'Company code', or 'Barcode' columns missing. Skipping PM7 Company Code population logic.")
-    # --- NEW LOGIC END ---
 
-    # --- NEW REGION MAPPING LOGIC ---
+
+    # --- Apply Region Mapping (Applies to all new/appended data) ---
     print("\n--- Applying Region Mapping ---")
     if region_mapping_df is None or region_mapping_df.empty:
         print("Warning: Region mapping file not provided or is empty. Region column will not be populated.")
@@ -563,37 +587,29 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
             print(f"Loaded {len(region_map)} unique R/3 CoCo -> Region mappings.")
 
             if 'Company code' in df_final_central.columns:
-                # Apply map only where Region is currently blank or None, allowing Workon's region to persist
-                # Check for empty string, None, pd.NA, or pd.NaT in 'Region'
+                # Apply map only where Region is currently blank or None
                 region_mask_to_fill = df_final_central['Region'].apply(lambda x: pd.isna(x) or str(x).strip() == '')
                 
                 df_final_central['Company code'] = df_final_central['Company code'].astype(str).str.strip().str.upper().str[:4]
                 
                 df_final_central.loc[region_mask_to_fill, 'Region'] = df_final_central.loc[region_mask_to_fill, 'Company code'].map(region_map)
                 
-                # Fill any remaining NaNs after mapping with empty string
-                df_final_central['Region'] = df_final_central['Region'].fillna('')
+                df_final_central['Region'] = df_final_central['Region'].fillna('') # Fill any remaining NaNs after mapping
                 print("Region mapping applied successfully and 'Company code' truncated to 4 characters.")
             else:
                 print("Warning: 'Company code' column not found in final central DataFrame. Cannot apply region mapping.")
                 df_final_central['Region'] = df_final_central['Region'].fillna('')
 
-    date_cols_in_central_file = [
-        'Received Date', 'Re-Open Date', 'Allocation Date',
-        'Completion Date', 'Clarification Date', 'Today'
-    ]
-    for col in df_final_central.columns:
-        if col in date_cols_in_central_file:
+    # Final formatting of dates to MM/DD/YYYY strings and other fills
+    for col in CONSOLIDATED_OUTPUT_COLUMNS:
+        if col in ['Received Date', 'Re-Open Date', 'Allocation Date', 'Completion Date', 'Clarification Date', 'Today']:
             df_final_central[col] = format_date_to_mdyyyy(df_final_central[col])
         elif df_final_central[col].dtype == 'object':
             df_final_central[col] = df_final_central[col].fillna('')
-        elif col in ['Barcode', 'Vendor number']:
+        elif col in ['Barcode', 'Vendor number', 'Company code']:
             df_final_central[col] = df_final_central[col].astype(str).replace('nan', '')
 
-    for col in CONSOLIDATED_OUTPUT_COLUMNS:
-        if col not in df_final_central.columns:
-            df_final_central[col] = ''
-
+    # Ensure final column order
     df_final_central = df_final_central[CONSOLIDATED_OUTPUT_COLUMNS]
 
     try:
@@ -622,12 +638,10 @@ def process_files():
 
     session['temp_dir'] = temp_dir
 
-    # Region mapping file is in the project root, so we go up one level from BASE_DIR ('api/')
     REGION_MAPPING_FILE_PATH = os.path.join(BASE_DIR, '..', 'company_code_region_mapping.xlsx')
 
     try:
         uploaded_files = {}
-        # Added 'workon_file' to the required file keys
         file_keys = ['pisa_file', 'esm_file', 'pm7_file', 'workon_file', 'central_file']
         for key in file_keys:
             if key not in request.files:
@@ -638,7 +652,6 @@ def process_files():
                 flash(f'No selected file for "{key}". All five files are required.', 'error')
                 return redirect(url_for('index'))
 
-            # Check for file extension (case-insensitive)
             if file and file.filename.lower().endswith('.xlsx'):
                 filename = secure_filename(file.filename)
                 file_path = os.path.join(temp_dir, filename)
@@ -652,20 +665,20 @@ def process_files():
         pisa_file_path = uploaded_files['pisa_file']
         esm_file_path = uploaded_files['esm_file']
         pm7_file_path = uploaded_files['pm7_file']
-        workon_file_path = uploaded_files['workon_file'] # New Workon P71 file
+        workon_file_path = uploaded_files['workon_file']
         initial_central_file_input_path = uploaded_files['central_file']
 
         df_pisa_original = None
         df_esm_original = None
         df_pm7_original = None
-        df_workon_original = None # New Workon P71 DataFrame
+        df_workon_original = None
         df_region_mapping = None
 
         try:
             df_pisa_original = pd.read_excel(pisa_file_path)
             df_esm_original = pd.read_excel(esm_file_path)
             df_pm7_original = pd.read_excel(pm7_file_path)
-            df_workon_original = pd.read_excel(workon_file_path) # Load Workon P71
+            df_workon_original = pd.read_excel(workon_file_path)
 
             if os.path.exists(REGION_MAPPING_FILE_PATH):
                 df_region_mapping = pd.read_excel(REGION_MAPPING_FILE_PATH)
@@ -684,25 +697,26 @@ def process_files():
 
         today_str = datetime.now().strftime("%d_%m_%Y_%H%M%S")
 
-        # --- Step 1: Consolidate Data (now includes Workon P71) ---
-        consolidated_output_filename = f'ConsolidatedData_{today_str}.xlsx'
-        consolidated_output_file_path = os.path.join(temp_dir, consolidated_output_filename)
-        success, result = consolidate_data_process(
-            df_pisa_original, df_esm_original, df_pm7_original, df_workon_original, consolidated_output_file_path
+        # --- Step 1: Consolidate Data (returns main and workon dataframes separately) ---
+        consolidated_main_output_filename = f'ConsolidatedMainData_{today_str}.xlsx'
+        consolidated_main_output_file_path = os.path.join(temp_dir, consolidated_main_output_filename)
+        success, results = consolidate_data_process(
+            df_pisa_original, df_esm_original, df_pm7_original, df_workon_original, consolidated_main_output_file_path
         )
 
         if not success:
-            flash(f'Consolidation Error: {result}', 'error')
+            flash(f'Consolidation Error: {results}', 'error')
             if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
             session.pop('temp_dir', None)
             return redirect(url_for('index'))
-        df_consolidated = result
+        df_consolidated_main, df_consolidated_workon = results
+        session['consolidated_output_path'] = consolidated_main_output_file_path # Keep for potential debug download
         flash('Data consolidation from all sources completed successfully!', 'success')
-        session['consolidated_output_path'] = consolidated_output_file_path
+        
 
-        # --- Step 2: Update existing central file records based on consolidation ---
+        # --- Step 2: Update existing central file records based on main consolidation ---
         success, result_df = process_central_file_step2_update_existing(
-            df_consolidated, initial_central_file_input_path
+            df_consolidated_main, initial_central_file_input_path
         )
         if not success:
             flash(f'Central File Processing (Step 2) Error: {result_df}', 'error')
@@ -711,12 +725,12 @@ def process_files():
             return redirect(url_for('index'))
         df_central_updated_existing = result_df
 
-        # --- Step 3: Final Merge (Add new barcodes, mark 'Needs Review', and apply Region Mapping) ---
+        # --- Step 3: Final Merge (PISA/ESM/PM7 new/needs review, then append Workon, apply global logic) ---
         final_central_output_filename = f'CentralFile_FinalOutput_{today_str}.xlsx'
         final_central_output_file_path = os.path.join(temp_dir, final_central_output_filename)
         success, message = process_central_file_step3_final_merge_and_needs_review(
-            df_consolidated, df_central_updated_existing, final_central_output_file_path,
-            df_pisa_original, df_esm_original, df_pm7_original, df_workon_original, df_region_mapping # Passed df_workon_original
+            df_consolidated_main, df_consolidated_workon, df_central_updated_existing, final_central_output_file_path,
+            df_pisa_original, df_esm_original, df_pm7_original, df_region_mapping
         )
         if not success:
             flash(f'Central File Processing (Step 3) Error: {message}', 'error')
