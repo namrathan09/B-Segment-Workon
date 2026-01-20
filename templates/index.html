@@ -101,6 +101,11 @@
             color: #1a4f8a; /* Medium blue */
             border: 1px solid #bce1fb; /* Blue border */
         }
+        .flash-messages li.warning { /* Added specific style for warning */
+            background-color: #fff3cd; /* Light yellow */
+            color: #856404; /* Dark yellow */
+            border: 1px solid #ffeeba; /* Yellow border */
+        }
         .download-links {
             margin-top: 20px;
             text-align: center;
@@ -256,7 +261,6 @@
                 <label for="pm7_file">Upload PM7 Excel File (.xlsx):</label>
                 <input type="file" name="pm7_file" id="pm7_file" accept=".xlsx" required>
             </div>
-            <!-- New input for Workon P71 file -->
             <div class="form-group">
                 <label for="workon_file">Upload Workon P71 Excel File (.xlsx):</label>
                 <input type="file" name="workon_file" id="workon_file" accept=".xlsx" required>
@@ -312,22 +316,29 @@
                         <li><strong>Received date</strong> (with a space after received, mapped from 'Creation date')</li>
                     </ul>
                 </li>
-                 <li><strong>Workon P71 Mandatory Columns:</strong> The Workon P71 file will be processed with flexible column matching (case-insensitive, first word matching). Lookups are performed for the following:
+                <li><strong>Workon P71 Mandatory Columns & Mapping:</strong> The Workon P71 file will be appended to the finalized Central File. The following columns are mapped (case-insensitive, first word matching, ignoring spaces):
                     <ul>
-                        <li><code>Key</code> (mapped to Barcode)</li>
-                        <li><code>Action</code> (mapped to Category)</li>
-                        <li><code>Company Code</code> (mapped to Company code)</li>
-                        <li><code>Country</code> (mapped to Region)</li>
-                        <li><code>Vendor Number</code> (mapped to Vendor number)</li>
-                        <li><code>Name</code> (mapped to Vendor Name)</li>
-                        <li><code>Status</code> (mapped to Status)</li>
-                        <li><code>Updated</code> (mapped to Received Date)</li>
-                        <li><code>Applicant</code> (mapped to Requester)</li>
-                        <li><code>Summary</code> (mapped to Remarks)</li>
-                        <li><strong>Fixed Values:</strong> 'Jayapal' will be set for Processor, 'Workon' for Channel. Allocation Date and Today will be current date. Other fields will be blank.</li>
+                        <li>Central <code>Barcode</code> &larr; Workon <code>key</code></li>
+                        <li>Central <code>Processor</code> &larr; "Jayapal" (Hardcoded)</li>
+                        <li>Central <code>Channel</code> &larr; "Workon" (Hardcoded)</li>
+                        <li>Central <code>Category</code> &larr; Workon <code>action</code></li>
+                        <li>Central <code>Company code</code> &larr; Workon <code>company code</code></li>
+                        <li>Central <code>Region</code> &larr; Workon <code>country</code></li>
+                        <li>Central <code>Vendor number</code> &larr; Workon <code>vendor number</code></li>
+                        <li>Central <code>Vendor Name</code> &larr; Workon <code>name</code></li>
+                        <li>Central <code>Status</code> &larr; Workon <code>status</code></li>
+                        <li>Central <code>Received Date</code> &larr; Workon <code>updated</code></li>
+                        <li>Central <code>Re-Open Date</code> &larr; (Blank)</li>
+                        <li>Central <code>Allocation Date</code> &larr; (Today's Date)</li>
+                        <li>Central <code>Clarification Date</code> &larr; (Blank)</li>
+                        <li>Central <code>Completion Date</code> &larr; (Blank)</li>
+                        <li>Central <code>Requester</code> &larr; Workon <code>applicant</code></li>
+                        <li>Central <code>Remarks</code> &larr; Workon <code>summary</code></li>
+                        <li>Central <code>Aging</code> &larr; (Blank)</li>
+                        <li>Central <code>Today</code> &larr; (Today's Date)</li>
                     </ul>
                 </li>
-                <li><strong>Processing & Upload:</strong> Upload the ESM, PISA, PM7, Workon, and Central files. Then, click on the <strong>"Process Files"</strong> button. The new updated tracker file will be automatically downloaded and will be ready for allocation.</li>
+                <li><strong>Processing & Upload:</strong> Upload the ESM, PISA, PM7, Workon P71, and Central files. Then, click on the <strong>"Process Files"</strong> button. The new updated tracker file will be automatically downloaded and will be ready for allocation.</li>
                 <li><strong>Post-Processing Actions:</strong>
                     <ul>
                         <li><strong>Rename & Upload:</strong> Replace the newly downloaded file by renaming it to <code>New B_Segment(DD_MM_YYYY)</code> with <strong>today's date</strong> in the Teams channel.</li>
