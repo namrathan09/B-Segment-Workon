@@ -12,8 +12,6 @@ warnings.filterwarnings('ignore')
 
 # --- Vercel Specific Path Configuration ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Adjusted path to ensure 'templates' and 'static' are located correctly
-# Assuming 'api' is the directory containing index.py, and templates/static are siblings to 'api'
 template_dir = os.path.join(BASE_DIR, '..', 'templates')
 static_dir = os.path.join(BASE_DIR, '..', 'static')
 
@@ -63,29 +61,27 @@ def clean_column_names(df):
 
 def find_best_match_column(df_columns, target_keywords):
     """
-    Finds the best matching column name in a DataFrame's columns based on target keywords.
+    Finds the best matching *cleaned* column name in a DataFrame's columns based on target keywords.
     Ignores case and considers the initial word of the column name.
-    Returns the cleaned column name if found, otherwise None.
+    Returns the *cleaned* column name if found, otherwise None.
+    This function should be called with already cleaned DataFrame columns.
     """
     if not isinstance(target_keywords, list):
         target_keywords = [target_keywords]
 
-    # Convert df_columns to a list of cleaned names for easier comparison
-    cleaned_df_columns = [re.sub(r'[^a-z0-9_]', '', col.strip().lower()).strip('_') for col in df_columns]
-    original_df_column_map = {cleaned: original for cleaned, original in zip(cleaned_df_columns, df_columns)}
-    
     for keyword in target_keywords:
+        # Clean the target keyword once
         cleaned_keyword = re.sub(r'[^a-z0-9_]', '', keyword.strip().lower()).strip('_')
-        for df_col_cleaned, original_col_name in zip(cleaned_df_columns, df_columns):
-            # Check for exact match (after cleaning)
+        for df_col_cleaned in df_columns: # df_columns are assumed to be already cleaned here
+            # Check for exact match
             if df_col_cleaned == cleaned_keyword:
-                return original_col_name # Return original name for .get()
+                return df_col_cleaned
             # Check if df_col_cleaned starts with the keyword
             if df_col_cleaned.startswith(cleaned_keyword):
-                return original_col_name
-            # Check if keyword is part of df_col_cleaned (more flexible, potentially less precise)
+                return df_col_cleaned
+            # Check if keyword is part of df_col_cleaned
             if cleaned_keyword in df_col_cleaned:
-                return original_col_name
+                return df_col_cleaned
     return None
 
 
@@ -188,9 +184,7 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, consolidated_ou
         print(f"Collected {len(df_pm7)} rows from PM7.")
 
     # --- Workon P71 Processing ---
-    # Map desired Workon P71 columns to their potentially cleaned/matched names
-    # Note: find_best_match_column now returns the *original* column name from the cleaned DataFrame,
-    # so we can use df_workon[original_col_name] to access the data.
+    # Map desired Workon P71 columns to their *cleaned* names
     workon_column_map = {
         'Barcode': find_best_match_column(df_workon.columns, ['key']),
         'Category': find_best_match_column(df_workon.columns, ['action']),
@@ -205,9 +199,8 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, consolidated_ou
     }
 
     # Check if essential columns are found for Workon P71
-    # We only check for the existence of the mapped clean names
-    essential_workon_cols = ['Barcode', 'Category', 'Company code', 'Region', 'Vendor number', 'Vendor Name', 'Status', 'Received Date', 'Requester', 'Remarks']
-    missing_workon_cols = [col_key for col_key in essential_workon_cols if workon_column_map[col_key] is None]
+    essential_workon_keys = ['Barcode', 'Category', 'Company code', 'Region', 'Vendor number', 'Vendor Name', 'Status', 'Received Date', 'Requester', 'Remarks']
+    missing_workon_cols = [col_key for col_key in essential_workon_keys if workon_column_map[col_key] is None]
 
     if missing_workon_cols:
         print(f"Warning: Missing essential Workon P71 columns for processing: {missing_workon_cols}. Skipping Workon P71 processing.")
@@ -367,15 +360,11 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
     """
     print(f"\n--- Starting Central File Status Processing (Step 3: Final Merge & Needs Review) ---")
 
-    # Original DFs are passed to allow for lookup of fields that might not be in consolidated_df
-    # (e.g., if we only pull a subset of columns into consolidated_df).
-    # For Workon, the fields are directly mapped in consolidate_data_process, so a separate lookup
-    # for enrichment in this step isn't strictly necessary if all needed fields are in consolidated_df.
-    # However, keeping the pattern for consistency and future flexibility.
+    # Clean original DFs for lookup purposes
     df_pisa_lookup = clean_column_names(df_pisa_original.copy())
     df_esm_lookup = clean_column_names(df_esm_original.copy())
     df_pm7_lookup = clean_column_names(df_pm7_original.copy())
-    df_workon_lookup = clean_column_names(df_workon_original.copy())
+    df_workon_lookup_cleaned = clean_column_names(df_workon_original.copy()) # Clean for consistent lookup
 
     # Create indexed versions for quick lookups
     df_pisa_indexed = pd.DataFrame()
@@ -403,14 +392,14 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
         print("Warning: 'barcode' column not found in cleaned PM7 lookup. Cannot perform PM7 lookups.")
 
     df_workon_indexed = pd.DataFrame()
-    workon_key_col = find_best_match_column(df_workon_original.columns, ['key']) # Use original columns for finding key
-    if workon_key_col:
-        # We need to clean this specific column in the lookup table as well to match `consolidated_df`'s barcode
-        df_workon_lookup[workon_key_col] = df_workon_lookup[workon_key_col].astype(str)
-        df_workon_indexed = df_workon_lookup.set_index(workon_key_col)
-        print(f"Workon P71 lookup indexed by '{workon_key_col}'.")
+    # Now, find_best_match_column should be called on the *already cleaned* df_workon_lookup_cleaned.columns
+    workon_key_col_cleaned = find_best_match_column(df_workon_lookup_cleaned.columns, ['key'])
+    if workon_key_col_cleaned:
+        df_workon_lookup_cleaned[workon_key_col_cleaned] = df_workon_lookup_cleaned[workon_key_col_cleaned].astype(str)
+        df_workon_indexed = df_workon_lookup_cleaned.set_index(workon_key_col_cleaned) # Use the CLEANED column name here
+        print(f"Workon P71 lookup indexed by '{workon_key_col_cleaned}'.")
     else:
-        print("Warning: 'key' column not found in Workon P71 original file. Cannot perform Workon P71 lookups for enrichment.")
+        print("Warning: 'key' column not found in Workon P71 (after cleaning). Cannot perform Workon P71 lookups for enrichment.")
 
 
     if 'Barcode' not in consolidated_df.columns:
@@ -434,6 +423,7 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
 
         # Initialize with values directly from the already-processed consolidated row.
         # This is the crucial correction. For Workon, these values are already finalized.
+        # For PISA/ESM/PM7, these are initial values that can be enriched.
         vendor_name = row_consolidated.get('Vendor Name')
         vendor_number = row_consolidated.get('Vendor number')
         company_code = row_consolidated.get('Company code')
@@ -444,7 +434,7 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
         remarks = row_consolidated.get('Remarks')
         region = row_consolidated.get('Region')
         
-        # --- PISA Lookup --- (remains unchanged, for PISA records)
+        # --- PISA Lookup ---
         if channel == 'PISA' and not df_pisa_indexed.empty and barcode in df_pisa_indexed.index:
             pisa_row = df_pisa_indexed.loc[barcode]
             if 'vendor_name' in pisa_row.index and pd.notna(pisa_row['vendor_name']):
@@ -456,7 +446,7 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
             if 'received_date' in pisa_row.index and pd.notna(pisa_row['received_date']):
                 received_date = pisa_row['received_date']
 
-        # --- ESM Lookup --- (remains unchanged, for ESM records)
+        # --- ESM Lookup ---
         elif channel == 'ESM' and not df_esm_indexed.empty and barcode in df_esm_indexed.index:
             esm_row = df_esm_indexed.loc[barcode]
             if 'company_code' in esm_row.index and pd.notna(esm_row['company_code']):
@@ -470,7 +460,7 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
             if 'received_date' in esm_row.index and pd.notna(esm_row['received_date']):
                 received_date = esm_row['received_date']
 
-        # --- PM7 Lookup --- (remains unchanged, for PM7 records)
+        # --- PM7 Lookup ---
         elif channel == 'PM7' and not df_pm7_indexed.empty and barcode in df_pm7_indexed.index:
             pm7_row = df_pm7_indexed.loc[barcode]
             if 'vendor_name' in pm7_row.index and pd.notna(pm7_row['vendor_name']):
@@ -482,25 +472,19 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df, upd
             if 'received_date' in pm7_row.index and pd.notna(pm7_row['received_date']):
                 received_date = pm7_row['received_date']
 
-        # --- Workon P71 Lookup --- (REMOVED redundant re-mapping)
-        # For 'Workon' channel, the `row_consolidated` already contains the correct
-        # mapped values (e.g., Processor='Jayapal', Channel='Workon', etc.)
-        # from the consolidate_data_process function.
-        # No further enrichment from df_workon_indexed is needed here for these fields.
-        # The 'Status', 'Allocation Date' are also already correctly set from consolidate_data_process.
+        # --- Workon P71 Lookup ---
+        # NO NEED TO RE-ENRICH WORKON DATA HERE. It's already fully processed in consolidate_data_process.
+        # The variables (vendor_name, etc.) for 'Workon' channel already contain their correct values from row_consolidated.
+        # Any attempt to re-lookup df_workon_indexed here is redundant and could cause issues.
 
         new_central_row_data = row_consolidated.to_dict() # Start with all columns from consolidated_df
-        # Ensure 'Status' is 'New' for new records being added to central
-        new_central_row_data['Status'] = 'New'
-        # Ensure 'Allocation Date' is today's date for new records being added to central
-        new_central_row_data['Allocation Date'] = datetime.now().strftime("%m/%d/%Y")
-        
-        # Override with potentially enriched values from PISA/ESM/PM7 lookups
-        # These will only apply if the channel was PISA/ESM/PM7 and enrichment happened above
+        # Override with potentially enriched values or fixed values for PISA/ESM/PM7, or use Workon's pre-set values.
         new_central_row_data['Vendor Name'] = vendor_name if vendor_name is not None else ''
         new_central_row_data['Vendor number'] = vendor_number if vendor_number is not None else ''
         new_central_row_data['Company code'] = company_code if company_code is not None else ''
-        new_central_row_data['Received Date'] = received_date # This will be the already formatted date string or enriched
+        new_central_row_data['Received Date'] = received_date
+        new_central_row_data['Status'] = 'New' # New records always start as 'New'
+        new_central_row_data['Allocation Date'] = datetime.now().strftime("%m/%d/%Y") # Always today's date for new records
         new_central_row_data['Processor'] = processor if processor is not None else ''
         new_central_row_data['Category'] = category if category is not None else ''
         new_central_row_data['Requester'] = requester if requester is not None else ''
