@@ -181,10 +181,10 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, main_consolidat
     # Find cleaned column names dynamically using get_workon_column
     workon_barcode_col = get_workon_column(df_workon.columns, ['key'])
     workon_category_col = get_workon_column(df_workon.columns, ['action'])
-    workon_company_code_col = get_workon_column(df_workon.columns, ['company_code', 'companycode'])
+    workon_company_code_col = get_workon_column(df_workon.columns, ['Company_code', 'companycode'])
     workon_region_col = get_workon_column(df_workon.columns, ['country'])
-    workon_vendor_number_col = get_workon_column(df_workon.columns, ['vendor_number', 'vendornumber'])
-    workon_vendor_name_col = get_workon_column(df_workon.columns, ['name'])
+    workon_vendor_number_col = get_workon_column(df_workon.columns, ['vendor_number', 'vendornumber','vendor_no.(header)'])
+    workon_vendor_name_col = get_workon_column(df_workon.columns, ['name1_'])
     workon_status_col = get_workon_column(df_workon.columns, ['status'])
     workon_received_date_col = get_workon_column(df_workon.columns, ['updated'])
     workon_requester_col = get_workon_column(df_workon.columns, ['applicant'])
@@ -208,22 +208,22 @@ def consolidate_data_process(df_pisa, df_esm, df_pm7, df_workon, main_consolidat
     else:
         for index, row in df_workon.iterrows():
             new_row = {
-                'Barcode': row.get(found_workon_cols['Barcode']),
+                'Barcode': row.get(found_workon_cols['Key']),
                 'Processor': 'Jayapal',
                 'Channel': 'Workon',
-                'Category': row.get(found_workon_cols['Category']),
+                'Category': row.get(found_workon_cols['Action']),
                 'Company code': row.get(found_workon_cols['Company code']),
-                'Region': row.get(found_workon_cols['Region']),
-                'Vendor number': row.get(found_workon_cols['Vendor number']),
-                'Vendor Name': row.get(found_workon_cols['Vendor Name']),
+                'Region': row.get(found_workon_cols['Country']),
+                'Vendor number': row.get(found_workon_cols['Vendor No. (Header)']),
+                'Vendor Name': row.get(found_workon_cols['Name 1']),
                 'Status': row.get(found_workon_cols['Status']),
-                'Received Date': row.get(found_workon_cols['Received Date']),
+                'Received Date': row.get(found_workon_cols['Updated']),
                 'Re-Open Date': None,
                 'Allocation Date': today_date_formatted,
                 'Clarification Date': None,
                 'Completion Date': None,
-                'Requester': row.get(found_workon_cols['Requester']),
-                'Remarks': row.get(found_workon_cols['Remarks']),
+                'Requester': row.get(found_workon_cols['Applicant']),
+                'Remarks': row.get(found_workon_cols['Summary']),
                 'Aging': None,
                 'Today': today_date
             }
