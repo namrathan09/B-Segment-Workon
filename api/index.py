@@ -465,25 +465,25 @@ def map_workon_columns(df_workon_raw):
         print("Workon P71 DataFrame is empty. Skipping mapping.")
         return pd.DataFrame(columns=CONSOLIDATED_OUTPUT_COLUMNS)
 
-    df_workon = df_workon_raw.copy()
+    df_workon = clean_column_names(df_workon_raw.copy()) # Clean column names for consistency
     today_date = datetime.now()
     today_date_formatted = today_date.strftime("%m/%d/%Y")
 
     mapped_rows = []
 
     # Map Workon P71 columns to the standard output format
-    # Use find_column_robust for flexible matching
+    # Use find_column_robust for flexible matching on the *original* column names
     workon_column_map = {
-        'Barcode': find_column_robust(df_workon, 'key'),
-        'Category': find_column_robust(df_workon, 'action'),
-        'Company code': find_column_robust(df_workon, 'company code'),
-        'Region': find_column_robust(df_workon, 'country'),
-        'Vendor number': find_column_robust(df_workon, 'vendor number'),
-        'Vendor Name': find_column_robust(df_workon, 'name'),
-        'Status': find_column_robust(df_workon, 'status'),
-        'Received Date': find_column_robust(df_workon, 'updated'), # Assuming 'updated' is the received date equivalent
-        'Requester': find_column_robust(df_workon, 'applicant'),
-        'Remarks': find_column_robust(df_workon, 'summary'),
+        'Barcode': find_column_robust(df_workon_raw, 'key'),
+        'Category': find_column_robust(df_workon_raw, 'action'),
+        'Company code': find_column_robust(df_workon_raw, 'company code'),
+        'Region': find_column_robust(df_workon_raw, 'country'),
+        'Vendor number': find_column_robust(df_workon_raw, 'vendor number'),
+        'Vendor Name': find_column_robust(df_workon_raw, 'name'),
+        'Status': find_column_robust(df_workon_raw, 'status'),
+        'Received Date': find_column_robust(df_workon_raw, 'updated'), # Assuming 'updated' is the received date equivalent
+        'Requester': find_column_robust(df_workon_raw, 'applicant'),
+        'Remarks': find_column_robust(df_workon_raw, 'summary'),
     }
 
     # Validate essential columns
@@ -493,31 +493,31 @@ def map_workon_columns(df_workon_raw):
         return pd.DataFrame(columns=CONSOLIDATED_OUTPUT_COLUMNS)
 
 
-    for index, row in df_workon.iterrows():
+    for index, row in df_workon.iterrows(): # Iterate over the cleaned df
         new_row_data = {col: '' for col in CONSOLIDATED_OUTPUT_COLUMNS} # Initialize with blanks
 
-        new_row_data['Barcode'] = str(row[workon_column_map['Barcode']]) if workon_column_map['Barcode'] else ''
+        # Use .get() with original column names (or cleaned if passed directly to row.get)
+        new_row_data['Barcode'] = str(row.get(re.sub(r'\s+', '_', workon_column_map['Barcode'].strip().lower()), '')) if workon_column_map['Barcode'] else ''
         new_row_data['Processor'] = 'Jayapal' # Hardcoded
         new_row_data['Channel'] = 'Workon' # Hardcoded (P71 and RGBA both use 'Workon' channel name)
-        new_row_data['Category'] = str(row[workon_column_map['Category']]) if workon_column_map['Category'] else ''
-        new_row_data['Company code'] = str(row[workon_column_map['Company code']]) if workon_column_map['Company code'] else ''
-        new_row_data['Region'] = str(row[workon_column_map['Region']]) if workon_column_map['Region'] else ''
-        new_row_data['Vendor number'] = str(row[workon_column_map['Vendor number']]) if workon_column_map['Vendor number'] else ''
-        new_row_data['Vendor Name'] = str(row[workon_column_map['Vendor Name']]) if workon_column_map['Vendor Name'] else ''
-        new_row_data['Status'] = str(row[workon_column_map['Status']]) if workon_column_map['Status'] else ''
+        new_row_data['Category'] = str(row.get(re.sub(r'\s+', '_', workon_column_map['Category'].strip().lower()), '')) if workon_column_map['Category'] else ''
+        new_row_data['Company code'] = str(row.get(re.sub(r'\s+', '_', workon_column_map['Company code'].strip().lower()), '')) if workon_column_map['Company code'] else ''
+        new_row_data['Region'] = str(row.get(re.sub(r'\s+', '_', workon_column_map['Region'].strip().lower()), '')) if workon_column_map['Region'] else ''
+        new_row_data['Vendor number'] = str(row.get(re.sub(r'\s+', '_', workon_column_map['Vendor number'].strip().lower()), '')) if workon_column_map['Vendor number'] else ''
+        new_row_data['Vendor Name'] = str(row.get(re.sub(r'\s+', '_', workon_column_map['Vendor Name'].strip().lower()), '')) if workon_column_map['Vendor Name'] else ''
+        new_row_data['Status'] = str(row.get(re.sub(r'\s+', '_', workon_column_map['Status'].strip().lower()), '')) if workon_column_map['Status'] else ''
 
         # Date columns - format immediately after retrieval
-        new_row_data['Received Date'] = format_date_to_mdyyyy(pd.Series([row[workon_column_map['Received Date']]])) if workon_column_map['Received Date'] else ''
-        if isinstance(new_row_data['Received Date'], pd.Series): # format_date_to_mdyyyy returns Series, extract value
-             new_row_data['Received Date'] = new_row_data['Received Date'].iloc[0]
+        received_date_val = row.get(re.sub(r'\s+', '_', workon_column_map['Received Date'].strip().lower())) if workon_column_map['Received Date'] else None
+        new_row_data['Received Date'] = format_date_to_mdyyyy(pd.Series([received_date_val])).iloc[0] if received_date_val is not None else ''
 
 
         new_row_data['Re-Open Date'] = '' # Blank
         new_row_data['Allocation Date'] = today_date_formatted # Today's Date
         new_row_data['Clarification Date'] = '' # Blank
         new_row_data['Completion Date'] = '' # Blank
-        new_row_data['Requester'] = str(row[workon_column_map['Requester']]) if workon_column_map['Requester'] else ''
-        new_row_data['Remarks'] = str(row[workon_column_map['Remarks']]) if workon_column_map['Remarks'] else ''
+        new_row_data['Requester'] = str(row.get(re.sub(r'\s+', '_', workon_column_map['Requester'].strip().lower()), '')) if workon_column_map['Requester'] else ''
+        new_row_data['Remarks'] = str(row.get(re.sub(r'\s+', '_', workon_column_map['Remarks'].strip().lower()), '')) if workon_column_map['Remarks'] else ''
         new_row_data['Aging'] = '' # Blank
         new_row_data['Today'] = today_date_formatted # Today's Date
 
@@ -783,6 +783,27 @@ def process_files():
             df_ultimate_final_central = pd.concat([df_current_consolidated, df_mapped_workon_rgba[CONSOLIDATED_OUTPUT_COLUMNS]], ignore_index=True)
             flash('Workon RGBA data successfully filtered, mapped, and appended!', 'success')
 
+        # --- FINAL AGING CALCULATION ---
+        print("\n--- Calculating Aging for blank entries ---")
+        # Convert date columns to datetime objects for calculation, coercing errors to NaT
+        df_ultimate_final_central['Received Date_dt'] = pd.to_datetime(df_ultimate_final_central['Received Date'], format='%m/%d/%Y', errors='coerce')
+        df_ultimate_final_central['Allocation Date_dt'] = pd.to_datetime(df_ultimate_final_central['Allocation Date'], format='%m/%d/%Y', errors='coerce')
+
+        # Identify rows where 'Aging' is blank/empty and both dates are valid
+        aging_mask = (df_ultimate_final_central['Aging'].fillna('').astype(str).str.strip() == '') & \
+                     (df_ultimate_final_central['Received Date_dt'].notna()) & \
+                     (df_ultimate_final_central['Allocation Date_dt'].notna())
+
+        # Calculate aging and convert to integer days
+        df_ultimate_final_central.loc[aging_mask, 'Aging'] = \
+            (df_ultimate_final_central.loc[aging_mask, 'Allocation Date_dt'] - \
+             df_ultimate_final_central.loc[aging_mask, 'Received Date_dt']).dt.days.astype(str)
+
+        # Clean up temporary date columns
+        df_ultimate_final_central = df_ultimate_final_central.drop(columns=['Received Date_dt', 'Allocation Date_dt'])
+        print(f"Calculated Aging for {aging_mask.sum()} entries.")
+        # --- END FINAL AGING CALCULATION ---
+
 
         # Final output saving
         final_central_output_filename = f'CentralFile_FinalOutput_{today_str}.xlsx'
@@ -790,7 +811,7 @@ def process_files():
 
         try:
             df_ultimate_final_central.to_excel(final_central_output_file_path, index=False)
-            #flash(f'Final Central file saved to: {final_central_output_file_path}', 'info')
+            #flash(f'Final Central file saved to: {final_central_output_file_path}', 'info') # Removed as per user request
         except Exception as e:
             flash(f"Error saving final central file: {e}", 'error')
             if os.path.exists(temp_dir): shutil.rmtree(temp_dir)
