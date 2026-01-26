@@ -407,32 +407,35 @@ def process_central_file_step3_final_merge_and_needs_review(consolidated_df_pisa
     else:
         print("Warning: 'Channel', 'Company code', or 'Barcode' columns missing. Skipping PM7 Company Code population logic.")
 
-    # --- REGION MAPPING LOGIC ---
+    # --- REGION MAPPING LOGIC --- (Applied here for PISA/ESM/PM7 and then for Workon RGBA below)
     print("\n--- Applying Region Mapping ---")
     if region_mapping_df is None or region_mapping_df.empty:
-        print("Warning: Region mapping file not provided or is empty. Region column will not be populated.")
+        print("Warning: Region mapping file not provided or is empty. Region column will not be populated for PISA/ESM/PM7 data.")
         df_final_central['Region'] = df_final_central['Region'].fillna('')
     else:
         region_mapping_df = clean_column_names(region_mapping_df.copy())
         if 'r3_coco' not in region_mapping_df.columns or 'region' not in region_mapping_df.columns:
-            print("Error: Region mapping file must contain 'r3_coco' and 'region' columns after cleaning. Skipping region mapping.")
+            print("Error: Region mapping file must contain 'r3_coco' and 'region' columns after cleaning. Skipping region mapping for PISA/ESM/PM7 data.")
             df_final_central['Region'] = df_final_central['Region'].fillna('')
         else:
-            region_map = {}
+            # Store the region_map for later use with RGBA and other data
+            global_region_map = {}
             for idx, row in region_mapping_df.iterrows():
                 coco_key = str(row['r3_coco']).strip().upper()
                 if coco_key:
-                    region_map[coco_key[:4]] = str(row['region']).strip()
+                    global_region_map[coco_key[:4]] = str(row['region']).strip()
+            session['region_map'] = global_region_map # Store in session to pass to other functions
 
-            print(f"Loaded {len(region_map)} unique R/3 CoCo -> Region mappings.")
+            print(f"Loaded {len(global_region_map)} unique R/3 CoCo -> Region mappings.")
 
             if 'Company code' in df_final_central.columns:
+                # Apply mapping to current df_final_central (PISA/ESM/PM7 data)
                 df_final_central['Company code'] = df_final_central['Company code'].astype(str).str.strip().str.upper().str[:4]
-                df_final_central['Region'] = df_final_central['Company code'].map(region_map).fillna(df_final_central['Region'])
+                df_final_central['Region'] = df_final_central['Company code'].map(global_region_map).fillna(df_final_central['Region'])
                 df_final_central['Region'] = df_final_central['Region'].fillna('')
-                print("Region mapping applied successfully and 'Company code' truncated to 4 characters.")
+                print("Region mapping applied successfully to PISA/ESM/PM7 data.")
             else:
-                print("Warning: 'Company code' column not found in final central DataFrame. Cannot apply region mapping.")
+                print("Warning: 'Company code' column not found in PISA/ESM/PM7 consolidated DataFrame. Cannot apply region mapping.")
                 df_final_central['Region'] = df_final_central['Region'].fillna('')
 
     # Format date columns after all data merges
@@ -495,7 +498,7 @@ def map_workon_columns(df_workon_raw):
 
         new_row_data['Barcode'] = str(row[workon_column_map['Barcode']]) if workon_column_map['Barcode'] else ''
         new_row_data['Processor'] = 'Jayapal' # Hardcoded
-        new_row_data['Channel'] = 'Workon' # Hardcoded
+        new_row_data['Channel'] = 'Workon' # Hardcoded (P71 and RGBA both use 'Workon' channel name)
         new_row_data['Category'] = str(row[workon_column_map['Category']]) if workon_column_map['Category'] else ''
         new_row_data['Company code'] = str(row[workon_column_map['Company code']]) if workon_column_map['Company code'] else ''
         new_row_data['Region'] = str(row[workon_column_map['Region']]) if workon_column_map['Region'] else ''
@@ -526,6 +529,117 @@ def map_workon_columns(df_workon_raw):
     return df_mapped_workon
 
 
+def map_workon_rgba_columns(df_workon_rgba_raw, region_map):
+    """
+    Maps columns from the raw Workon RGBA DataFrame to the CONSOLIDATED_OUTPUT_COLUMNS format.
+    Filters by 'Current Assignee' and handles robust column finding.
+    Applies region mapping.
+    """
+    print("\n--- Starting Workon RGBA Data Mapping ---")
+    if df_workon_rgba_raw.empty:
+        print("Workon RGBA DataFrame is empty. Skipping mapping.")
+        return pd.DataFrame(columns=CONSOLIDATED_OUTPUT_COLUMNS)
+
+    df_workon_rgba = clean_column_names(df_workon_rgba_raw.copy())
+    today_date = datetime.now()
+    today_date_formatted = today_date.strftime("%m/%d/%Y")
+
+    # --- Filtering Logic ---
+    current_assignee_col = find_column_robust(df_workon_rgba_raw, 'Current Assignee') # Use raw df for robust search
+    if current_assignee_col:
+        # After finding in raw, clean the column name and then use it for filtering
+        cleaned_current_assignee_col = re.sub(r'\s+', '_', current_assignee_col.strip().lower())
+        cleaned_current_assignee_col = re.sub(r'[^a-z0-9_]', '', cleaned_current_assignee_col).strip('_')
+
+        if cleaned_current_assignee_col in df_workon_rgba.columns:
+            original_rgba_count = len(df_workon_rgba)
+            df_workon_rgba_filtered = df_workon_rgba[
+                df_workon_rgba[cleaned_current_assignee_col] == "VMD GS OSP-NA (GS/OMD-APAC)"
+            ].copy()
+            print(f"Workon RGBA file filtered. Original records: {original_rgba_count}, Filtered records: {len(df_workon_rgba_filtered)}")
+        else:
+            print(f"Warning: Cleaned 'Current Assignee' column '{cleaned_current_assignee_col}' not found in Workon RGBA. No filter applied.")
+            df_workon_rgba_filtered = df_workon_rgba.copy()
+    else:
+        print("Warning: 'Current Assignee' column not found in Workon RGBA file. No filter applied.")
+        df_workon_rgba_filtered = df_workon_rgba.copy()
+
+    if df_workon_rgba_filtered.empty:
+        print("Workon RGBA DataFrame is empty after filtering. Skipping mapping.")
+        return pd.DataFrame(columns=CONSOLIDATED_OUTPUT_COLUMNS)
+
+    mapped_rows = []
+
+    # Map Workon RGBA columns to the standard output format
+    # Use find_column_robust for flexible matching on the *original* column names
+    workon_rgba_column_map = {
+        'Barcode': find_column_robust(df_workon_rgba_raw, 'key'),
+        'Company code': find_column_robust(df_workon_rgba_raw, 'company code'),
+        'Received Date': find_column_robust(df_workon_rgba_raw, 'Updated'),
+        'Remarks': find_column_robust(df_workon_rgba_raw, 'summary'),
+        # These are currently blank in your request, assuming they should remain blank or you'll clarify a mapping
+        'Category': None,
+        'Vendor number': None,
+        'Vendor Name': None,
+        'Status': None,
+        'Requester': None,
+    }
+
+    # Validate essential columns
+    # Barcode and Received Date are critical for new records
+    if not all(workon_rgba_column_map[k] for k in ['Barcode', 'Received Date']):
+        missing_cols = [k for k, v in workon_rgba_column_map.items() if k in ['Barcode', 'Received Date'] and v is None]
+        print(f"Error: Missing essential Workon RGBA columns for mapping: {missing_cols}. Skipping Workon RGBA processing.")
+        return pd.DataFrame(columns=CONSOLIDATED_OUTPUT_COLUMNS)
+
+    for index, row in df_workon_rgba_filtered.iterrows():
+        new_row_data = {col: '' for col in CONSOLIDATED_OUTPUT_COLUMNS} # Initialize with blanks
+
+        new_row_data['Barcode'] = str(row.get(re.sub(r'\s+', '_', workon_rgba_column_map['Barcode'].strip().lower()), '')) if workon_rgba_column_map['Barcode'] else ''
+        new_row_data['Processor'] = 'Divya' # Hardcoded as per request
+        new_row_data['Channel'] = 'Workon' # Hardcoded
+        new_row_data['Category'] = str(row.get(re.sub(r'\s+', '_', workon_rgba_column_map['Category'].strip().lower()), '')) if workon_rgba_column_map['Category'] else ''
+        new_row_data['Company code'] = str(row.get(re.sub(r'\s+', '_', workon_rgba_column_map['Company code'].strip().lower()), '')) if workon_rgba_column_map['Company code'] else ''
+        
+        # Region will be mapped later based on Company Code
+        new_row_data['Region'] = '' 
+
+        new_row_data['Vendor number'] = str(row.get(re.sub(r'\s+', '_', workon_rgba_column_map['Vendor number'].strip().lower()), '')) if workon_rgba_column_map['Vendor number'] else ''
+        new_row_data['Vendor Name'] = str(row.get(re.sub(r'\s+', '_', workon_rgba_column_map['Vendor Name'].strip().lower()), '')) if workon_rgba_column_map['Vendor Name'] else ''
+        new_row_data['Status'] = str(row.get(re.sub(r'\s+', '_', workon_rgba_column_map['Status'].strip().lower()), '')) if workon_rgba_column_map['Status'] else ''
+
+        # Date columns - format immediately after retrieval
+        received_date_val = row.get(re.sub(r'\s+', '_', workon_rgba_column_map['Received Date'].strip().lower())) if workon_rgba_column_map['Received Date'] else None
+        new_row_data['Received Date'] = format_date_to_mdyyyy(pd.Series([received_date_val])).iloc[0] if received_date_val is not None else ''
+
+        new_row_data['Re-Open Date'] = '' # Blank
+        new_row_data['Allocation Date'] = today_date_formatted # Today's Date
+        new_row_data['Clarification Date'] = '' # Blank
+        new_row_data['Completion Date'] = '' # Blank
+        new_row_data['Requester'] = str(row.get(re.sub(r'\s+', '_', workon_rgba_column_map['Requester'].strip().lower()), '')) if workon_rgba_column_map['Requester'] else ''
+        new_row_data['Remarks'] = str(row.get(re.sub(r'\s+', '_', workon_rgba_column_map['Remarks'].strip().lower()), '')) if workon_rgba_column_map['Remarks'] else ''
+        new_row_data['Aging'] = '' # Blank
+        new_row_data['Today'] = today_date_formatted # Today's Date
+
+        mapped_rows.append(new_row_data)
+
+    df_mapped_workon_rgba = pd.DataFrame(mapped_rows, columns=CONSOLIDATED_OUTPUT_COLUMNS)
+
+    # --- Apply Region Mapping to RGBA data ---
+    if region_map and 'Company code' in df_mapped_workon_rgba.columns:
+        df_mapped_workon_rgba['Company code'] = df_mapped_workon_rgba['Company code'].astype(str).str.strip().str.upper().str[:4]
+        df_mapped_workon_rgba['Region'] = df_mapped_workon_rgba['Company code'].map(region_map).fillna(df_mapped_workon_rgba['Region'])
+        df_mapped_workon_rgba['Region'] = df_mapped_workon_rgba['Region'].fillna('')
+        print(f"Region mapping applied to {len(df_mapped_workon_rgba)} Workon RGBA records.")
+    else:
+        print("Warning: Region mapping not applied to Workon RGBA data (mapping data not available or 'Company code' missing).")
+        df_mapped_workon_rgba['Region'] = df_mapped_workon_rgba['Region'].fillna('') # Ensure it's not NaN
+
+    print(f"Mapped {len(df_mapped_workon_rgba)} rows from Workon RGBA.")
+    print("--- Workon RGBA Data Mapping Complete ---")
+    return df_mapped_workon_rgba
+
+
 # --- Flask Routes ---
 
 @app.route('/', methods=['GET'])
@@ -539,6 +653,7 @@ def process_files():
     session.pop('consolidated_output_path', None)
     session.pop('central_output_path', None)
     session.pop('temp_dir', None)
+    session.pop('region_map', None) # Clear region map from session as well
 
     session['temp_dir'] = temp_dir
 
@@ -547,14 +662,15 @@ def process_files():
 
     try:
         uploaded_files = {}
-        file_keys = ['pisa_file', 'esm_file', 'pm7_file', 'central_file', 'workon_file']
+        # Added 'workon_rgba_file' to file_keys
+        file_keys = ['pisa_file', 'esm_file', 'pm7_file', 'workon_file', 'workon_rgba_file', 'central_file']
         for key in file_keys:
             if key not in request.files:
-                flash(f'Missing file: "{key}". All five files are required.', 'error')
+                flash(f'Missing file: "{key}". All six files are required.', 'error')
                 return redirect(url_for('index'))
             file = request.files[key]
             if file.filename == '':
-                flash(f'No selected file for "{key}". All five files are required.', 'error')
+                flash(f'No selected file for "{key}". All six files are required.', 'error')
                 return redirect(url_for('index'))
 
             # Check for file extension (case-insensitive)
@@ -571,20 +687,23 @@ def process_files():
         pisa_file_path = uploaded_files['pisa_file']
         esm_file_path = uploaded_files['esm_file']
         pm7_file_path = uploaded_files['pm7_file']
+        workon_file_path = uploaded_files['workon_file']
+        workon_rgba_file_path = uploaded_files['workon_rgba_file'] # New Workon RGBA file path
         initial_central_file_input_path = uploaded_files['central_file']
-        workon_file_path = uploaded_files['workon_file'] # New Workon P71 file path
 
         df_pisa_original = None
         df_esm_original = None
         df_pm7_original = None
-        df_workon_original = None # New Workon P71 original DataFrame
+        df_workon_original = None
+        df_workon_rgba_original = None # New Workon RGBA original DataFrame
         df_region_mapping = None
 
         try:
             df_pisa_original = pd.read_excel(pisa_file_path)
             df_esm_original = pd.read_excel(esm_file_path)
             df_pm7_original = pd.read_excel(pm7_file_path)
-            df_workon_original = pd.read_excel(workon_file_path) # Read Workon P71 file
+            df_workon_original = pd.read_excel(workon_file_path)
+            df_workon_rgba_original = pd.read_excel(workon_rgba_file_path) # Read Workon RGBA file
 
             if os.path.exists(REGION_MAPPING_FILE_PATH):
                 df_region_mapping = pd.read_excel(REGION_MAPPING_FILE_PATH)
@@ -604,6 +723,7 @@ def process_files():
         today_str = datetime.now().strftime("%d_%m_%Y_%H%M%S")
 
         # --- Phase 1: Consolidate PISA, ESM, PM7 data ---
+        # The process_central_file_step3_final_merge_and_needs_review now also handles region mapping for its data
         df_consolidated_pisa_esm_pm7 = consolidate_data_process(
             df_pisa_original, df_esm_original, df_pm7_original
         )
@@ -640,18 +760,29 @@ def process_files():
             return redirect(url_for('index'))
         flash('Central file updated and merged with PISA, ESM, PM7 data successfully!', 'success')
 
+        # Get the region map generated in step 3 for use with Workon RGBA
+        current_region_map = session.get('region_map', {})
 
-        # --- Phase 2: Workon P71 Integration (Final Append Step) ---
-        df_mapped_workon = map_workon_columns(df_workon_original)
-        if df_mapped_workon.empty:
-            flash('Workon P71 file was empty or had mapping issues. No Workon data added.', 'warning')
-            df_ultimate_final_central = df_final_central_pisa_esm_pm7
+
+        # --- Phase 2: Workon P71 Integration (Append) ---
+        df_mapped_workon_p71 = map_workon_columns(df_workon_original)
+        if df_mapped_workon_p71.empty:
+            flash('Workon P71 file was empty or had mapping issues. No Workon P71 data added.', 'warning')
+            df_current_consolidated = df_final_central_pisa_esm_pm7
         else:
-            # Ensure both DFs have the same columns in the same order before concat
-            df_final_central_pisa_esm_pm7 = df_final_central_pisa_esm_pm7[CONSOLIDATED_OUTPUT_COLUMNS]
-            df_mapped_workon = df_mapped_workon[CONSOLIDATED_OUTPUT_COLUMNS] # Already ensured in map_workon_columns
-            df_ultimate_final_central = pd.concat([df_final_central_pisa_esm_pm7, df_mapped_workon], ignore_index=True)
-            flash('Workon P71 data successfully mapped and appended to the central file!', 'success')
+            df_current_consolidated = pd.concat([df_final_central_pisa_esm_pm7, df_mapped_workon_p71[CONSOLIDATED_OUTPUT_COLUMNS]], ignore_index=True)
+            flash('Workon P71 data successfully mapped and appended.', 'success')
+
+        # --- Phase 3: Workon RGBA Integration (Append) ---
+        # Pass the region_map to the RGBA mapping function
+        df_mapped_workon_rgba = map_workon_rgba_columns(df_workon_rgba_original, current_region_map)
+        if df_mapped_workon_rgba.empty:
+            flash('Workon RGBA file was empty, had filtering issues, or mapping issues. No Workon RGBA data added.', 'warning')
+            df_ultimate_final_central = df_current_consolidated
+        else:
+            df_ultimate_final_central = pd.concat([df_current_consolidated, df_mapped_workon_rgba[CONSOLIDATED_OUTPUT_COLUMNS]], ignore_index=True)
+            flash('Workon RGBA data successfully filtered, mapped, and appended!', 'success')
+
 
         # Final output saving
         final_central_output_filename = f'CentralFile_FinalOutput_{today_str}.xlsx'
@@ -738,6 +869,7 @@ def cleanup_session():
             flash(f'Error cleaning up temporary files: {e}', 'error')
     session.pop('temp_dir', None)
     session.pop('central_output_path', None)
+    session.pop('region_map', None)
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
