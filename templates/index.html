@@ -5,22 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Allocation Application</title>
     <style>
-        /* Black Theme CSS */
+        /* Refined Dark Theme CSS - Less "pure black" */
         body {
             font-family: Arial, sans-serif;
-            background-color: #1a1a1a; /* Dark grey body background */
+            background-color: #121212; /* Very dark grey body background */
             margin: 0;
             padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            color: #ffffff; /* Default text color for body */
+            color: #e0e0e0; /* Light grey default text color for body */
         }
         .container {
-            background-color: #000000; /* Black container */
+            background-color: #1e1e1e; /* Slightly lighter dark grey container */
             padding: 30px;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); /* Darker shadow for contrast */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); /* Softer shadow */
             width: 100%;
             max-width: 600px;
             box-sizing: border-box;
@@ -33,7 +33,7 @@
             margin-bottom: 20px;
         }
         h1 {
-            color: #e0e0e0; /* Light grey for main title */
+            color: #ffffff; /* White for main title */
             text-align: center;
             margin-bottom: 30px;
         }
@@ -45,19 +45,19 @@
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
-            color: #ffffff; /* White for labels */
+            color: #e0e0e0; /* Light grey for labels */
         }
         input[type="file"] {
             width: 100%;
             padding: 10px;
-            border: 1px solid #555555; /* Medium grey border */
+            border: 1px solid #444444; /* Dark grey border */
             border-radius: 4px;
             box-sizing: border-box;
             font-size: 1em;
             padding-top: 3px;
             padding-bottom: 3px;
             background-color: #333333; /* Dark grey input background */
-            color: #ffffff; /* White text for input */
+            color: #e0e0e0; /* Light grey text for input */
         }
         button {
             background-color: #007bff; /* Vibrant blue for buttons */
@@ -90,35 +90,35 @@
         }
         /* Flash message specific colors for dark theme */
         .flash-messages li.error {
-            background-color: #721c24; /* Dark red background */
-            border: 1px solid #f5c6cb;
-            color: #f8d7da; /* Light red text */
+            background-color: #4a1c1c; /* Darker red background */
+            border: 1px solid #721c24;
+            color: #ffcccc; /* Lighter red text */
         }
         .flash-messages li.success {
-            background-color: #155724; /* Dark green background */
-            border: 1px solid #c3e6cb;
-            color: #d4edda; /* Light green text */
+            background-color: #1e4a1e; /* Darker green background */
+            border: 1px solid #155724;
+            color: #ccffcc; /* Lighter green text */
         }
         .flash-messages li.info {
-            background-color: #0c5460; /* Dark cyan background */
-            border: 1px solid #bee5eb;
-            color: #d1ecf1; /* Light cyan text */
+            background-color: #1c3d5c; /* Darker blue background */
+            border: 1px solid #0c5460;
+            color: #ccf2ff; /* Lighter blue text */
         }
         .flash-messages li.warning {
-            background-color: #856404; /* Dark yellow background */
-            border: 1px solid #ffeeba;
-            color: #fff3cd; /* Light yellow text */
+            background-color: #5c4f1c; /* Darker yellow background */
+            border: 1px solid #856404;
+            color: #fffac9; /* Lighter yellow text */
         }
         .download-links {
             margin-top: 20px;
             text-align: center;
         }
         .download-links h2 {
-            color: #e0e0e0; /* Light grey for download title */
+            color: #ffffff; /* White for download title */
             margin-bottom: 10px;
         }
         .download-links p {
-            color: #ffffff; /* White for download description */
+            color: #e0e0e0; /* Light grey for download description */
             margin-bottom: 15px;
         }
         .download-links a {
@@ -145,22 +145,22 @@
             width: 100%; /* Full width */
             height: 100%; /* Full height */
             overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.8); /* Darker overlay */
+            background-color: rgba(0,0,0,0.7); /* Slightly lighter overlay */
             justify-content: center;
             align-items: center;
         }
         .modal-content {
-            background-color: #222222; /* Dark grey for modal content */
+            background-color: #282828; /* Dark grey for modal content */
             margin: auto;
-            padding: 25px; /* Slightly more padding */
-            border: 1px solid #444444; /* Darker border */
+            padding: 25px;
+            border: 1px solid #555555; /* Medium grey border */
             border-radius: 8px;
-            width: 85%; /* Slightly wider */
-            max-width: 800px; /* Larger max width */
-            box-shadow: 0 5px 15px rgba(0,0,0,0.7); /* More pronounced shadow */
+            width: 85%;
+            max-width: 800px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.6); /* Softer shadow */
             animation-name: animatetop;
             animation-duration: 0.4s;
-            color: #ffffff; /* White text for modal content */
+            color: #e0e0e0; /* Light grey text for modal content */
         }
         /* Add Animation */
         @keyframes animatetop {
@@ -168,16 +168,16 @@
             to {top: 0; opacity: 1}
         }
         .close-button {
-            color: #ffffff; /* White close button */
+            color: #e0e0e0; /* Light grey close button */
             float: right;
-            font-size: 30px; /* Slightly larger */
+            font-size: 30px;
             font-weight: bold;
-            margin-top: -10px; /* Adjust positioning */
-            margin-right: -5px; /* Adjust positioning */
+            margin-top: -10px;
+            margin-right: -5px;
         }
         .close-button:hover,
         .close-button:focus {
-            color: #cccccc; /* Lighter grey on hover */
+            color: #ffffff; /* White on hover */
             text-decoration: none;
             cursor: pointer;
         }
@@ -192,7 +192,7 @@
             text-align: left;
             margin-left: 25px;
             padding-left: 0;
-            color: #ffffff; /* White for list items */
+            color: #e0e0e0; /* Light grey for list items */
         }
         .modal-content ul li {
             margin-bottom: 12px;
@@ -200,7 +200,7 @@
             font-size: 1em;
         }
         .modal-content ul li strong {
-            color: #007bff; /* Vibrant blue for bold text within rules */
+            color: #00aaff; /* Slightly lighter blue for bold text within rules for contrast */
             font-weight: bold;
         }
         /* For sub-lists within rules */
@@ -212,7 +212,7 @@
         }
         .modal-content ul ul li {
             margin-bottom: 5px;
-            color: #cccccc; /* Lighter grey for sub-list items */
+            color: #cccccc; /* Medium grey for sub-list items */
             font-size: 0.9em;
         }
         .rules-link {
@@ -222,13 +222,13 @@
             margin-bottom: 15px;
         }
         .rules-link a {
-            color: #007bff; /* Vibrant blue for rules link */
+            color: #0099ff; /* Brighter blue for rules link */
             text-decoration: none;
             font-weight: bold;
         }
         .rules-link a:hover {
             text-decoration: underline;
-            color: #0099ff; /* Lighter blue on hover */
+            color: #00ccff; /* Even brighter blue on hover */
         }
     </style>
 </head>
