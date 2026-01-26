@@ -129,7 +129,7 @@
             transition: background-color 0.3s ease;
         }
         .download-links a:hover {
-            background-color: #0056b3; /* Darker blue on hover */
+            background-color: #003d80; /* Darker blue on hover */
         }
  
         /* Styles for the Modal (Rules Popup) */
@@ -266,6 +266,10 @@
                 <input type="file" name="workon_file" id="workon_file" accept=".xlsx" required>
             </div>
             <div class="form-group">
+                <label for="workon_rgba_file">Upload Workon RGBA Excel File (.xlsx):</label> {# NEW LINE HERE #}
+                <input type="file" name="workon_rgba_file" id="workon_rgba_file" accept=".xlsx" required> {# NEW LINE HERE #}
+            </div>
+            <div class="form-group">
                 <label for="central_file">Upload Central Excel File (.xlsx):</label>
                 <input type="file" name="central_file" id="central_file" accept=".xlsx" required>
             </div>
@@ -318,27 +322,52 @@
                 </li>
                 <li><strong>Workon P71 Mandatory Columns & Mapping:</strong> The Workon P71 file will be appended to the finalized Central File. The following columns are mapped (case-insensitive, first word matching, ignoring spaces):
                     <ul>
-                        <li>Central <code>Barcode</code> &larr; Workon <code>key</code></li>
+                        <li>Central <code>Barcode</code> &larr; Workon P71 <code>key</code></li>
                         <li>Central <code>Processor</code> &larr; "Jayapal" (Hardcoded)</li>
                         <li>Central <code>Channel</code> &larr; "Workon" (Hardcoded)</li>
-                        <li>Central <code>Category</code> &larr; Workon <code>action</code></li>
-                        <li>Central <code>Company code</code> &larr; Workon <code>company code</code></li>
-                        <li>Central <code>Region</code> &larr; Workon <code>country</code></li>
-                        <li>Central <code>Vendor number</code> &larr; Workon <code>vendor number</code></li>
-                        <li>Central <code>Vendor Name</code> &larr; Workon <code>name</code></li>
-                        <li>Central <code>Status</code> &larr; Workon <code>status</code></li>
-                        <li>Central <code>Received Date</code> &larr; Workon <code>updated</code></li>
+                        <li>Central <code>Category</code> &larr; Workon P71 <code>action</code></li>
+                        <li>Central <code>Company code</code> &larr; Workon P71 <code>company code</code></li>
+                        <li>Central <code>Region</code> &larr; Workon P71 <code>country</code></li>
+                        <li>Central <code>Vendor number</code> &larr; Workon P71 <code>vendor number</code></li>
+                        <li>Central <code>Vendor Name</code> &larr; Workon P71 <code>name</code></li>
+                        <li>Central <code>Status</code> &larr; Workon P71 <code>status</code></li>
+                        <li>Central <code>Received Date</code> &larr; Workon P71 <code>updated</code></li>
                         <li>Central <code>Re-Open Date</code> &larr; (Blank)</li>
                         <li>Central <code>Allocation Date</code> &larr; (Today's Date)</li>
                         <li>Central <code>Clarification Date</code> &larr; (Blank)</li>
                         <li>Central <code>Completion Date</code> &larr; (Blank)</li>
-                        <li>Central <code>Requester</code> &larr; Workon <code>applicant</code></li>
-                        <li>Central <code>Remarks</code> &larr; Workon <code>summary</code></li>
+                        <li>Central <code>Requester</code> &larr; Workon P71 <code>applicant</code></li>
+                        <li>Central <code>Remarks</code> &larr; Workon P71 <code>summary</code></li>
                         <li>Central <code>Aging</code> &larr; (Blank)</li>
                         <li>Central <code>Today</code> &larr; (Today's Date)</li>
                     </ul>
                 </li>
-                <li><strong>Processing & Upload:</strong> Upload the ESM, PISA, PM7, Workon P71, and Central files. Then, click on the <strong>"Process Files"</strong> button. The new updated tracker file will be automatically downloaded and will be ready for allocation.</li>
+                {# NEW SECTION FOR WORKON RGBA #}
+                <li><strong>Workon RGBA Mandatory Columns, Filter & Mapping:</strong> The Workon RGBA file will be filtered and appended to the finalized Central File.
+                    <p><strong>Filter Condition:</strong> Only records where <code>Current Assignee</code> is "VMD GS OSP-NA (GS/OMD-APAC)" will be processed.</p>
+                    <p>The following columns are mapped (case-insensitive, first word matching, ignoring spaces):</p>
+                    <ul>
+                        <li>Central <code>Barcode</code> &larr; Workon RGBA <code>key</code></li>
+                        <li>Central <code>Processor</code> &larr; "Divya" (Hardcoded)</li>
+                        <li>Central <code>Channel</code> &larr; "Workon" (Hardcoded)</li>
+                        <li>Central <code>Category</code> &larr; (<strong>Clarification Needed:</strong> What Workon RGBA column maps to Category, or should it be blank?)</li>
+                        <li>Central <code>Company code</code> &larr; Workon RGBA <code>company code</code></li>
+                        <li>Central <code>Region</code> &larr; (Automatically mapped from <code>company_code_region_mapping.xlsx</code> based on <code>Company code</code>)</li>
+                        <li>Central <code>Vendor number</code> &larr; (<strong>Clarification Needed:</strong> What Workon RGBA column maps to Vendor number, or should it be blank?)</li>
+                        <li>Central <code>Vendor Name</code> &larr; (<strong>Clarification Needed:</strong> What Workon RGBA column maps to Vendor Name, or should it be blank?)</li>
+                        <li>Central <code>Status</code> &larr; (<strong>Clarification Needed:</strong> What Workon RGBA column maps to Status, or should it be blank?)</li>
+                        <li>Central <code>Received Date</code> &larr; Workon RGBA <code>Updated</code></li>
+                        <li>Central <code>Re-Open Date</code> &larr; (Blank)</li>
+                        <li>Central <code>Allocation Date</code> &larr; (Today's Date)</li>
+                        <li>Central <code>Clarification Date</code> &larr; (Blank)</li>
+                        <li>Central <code>Completion Date</code> &larr; (Blank)</li>
+                        <li>Central <code>Requester</code> &larr; (<strong>Clarification Needed:</strong> What Workon RGBA column maps to Requester, or should it be blank?)</li>
+                        <li>Central <code>Remarks</code> &larr; Workon RGBA <code>summary</code></li>
+                        <li>Central <code>Aging</code> &larr; (Blank)</li>
+                        <li>Central <code>Today</code> &larr; (Today's Date)</li>
+                    </ul>
+                </li>
+                <li><strong>Processing & Upload:</strong> Upload the ESM, PISA, PM7, Workon P71, Workon RGBA, and Central files. Then, click on the <strong>"Process Files"</strong> button. The new updated tracker file will be automatically downloaded and will be ready for allocation.</li>
                 <li><strong>Post-Processing Actions:</strong>
                     <ul>
                         <li><strong>Rename & Upload:</strong> Replace the newly downloaded file by renaming it to <code>New B_Segment(DD_MM_YYYY)</code> with <strong>today's date</strong> in the Teams channel.</li>
