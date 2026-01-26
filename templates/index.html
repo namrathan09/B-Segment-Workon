@@ -5,62 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Allocation Application</title>
     <style>
-        /* Refined Dark Theme CSS - Less "pure black" */
+        /* Basic CSS for better readability - Using white, black, light grey, dark blue, light blue */
         body {
             font-family: Arial, sans-serif;
-            background-color: #121212; /* Very dark grey body background */
+            background-color: #f6f2f2; /* Light grey */
             margin: 0;
             padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            color: #e0e0e0; /* Light grey default text color for body */
         }
         .container {
-            background-color: #1e1e1e; /* Slightly lighter dark grey container */
+            background-color: #ffffff; /* White */
             padding: 30px;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); /* Softer shadow */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Slightly darker shadow for contrast */
             width: 100%;
             max-width: 600px;
             box-sizing: border-box;
             margin-bottom: 20px;
-            text-align: center;
+            text-align: center; /* Center content within the container */
         }
         .logo {
-            width: 250px;
-            height: auto;
-            margin-bottom: 20px;
+            width: 250px; /* Increased width to make it 'elongated' (wider) */
+            height: auto; /* Maintains aspect ratio */
+            margin-bottom: 20px; /* Space between logo and title */
         }
         h1 {
-            color: #ffffff; /* White for main title */
+            color: #2c3e50; /* Dark blue */
             text-align: center;
             margin-bottom: 30px;
         }
         .form-group {
             margin-bottom: 15px;
-            text-align: left;
+            text-align: left; /* Align labels and inputs to the left */
         }
         label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
-            color: #e0e0e0; /* Light grey for labels */
+            color: #333333; /* Dark grey/black */
         }
         input[type="file"] {
             width: 100%;
             padding: 10px;
-            border: 1px solid #444444; /* Dark grey border */
+            border: 1px solid #cccccc; /* Light grey border */
             border-radius: 4px;
             box-sizing: border-box;
             font-size: 1em;
             padding-top: 3px;
             padding-bottom: 3px;
-            background-color: #333333; /* Dark grey input background */
-            color: #e0e0e0; /* Light grey text for input */
+            background-color: #ffffff; /* White background for input */
         }
         button {
-            background-color: #007bff; /* Vibrant blue for buttons */
+            background-color: #0056b3; /* Dark blue */
             color: white;
             padding: 12px 20px;
             border: none;
@@ -71,7 +69,7 @@
             transition: background-color 0.3s ease;
         }
         button:hover {
-            background-color: #0056b3; /* Darker blue on hover */
+            background-color: #003d80; /* Slightly darker blue on hover */
         }
         .flash-messages {
             list-style-type: none;
@@ -85,45 +83,44 @@
             border-radius: 5px;
             margin-bottom: 10px;
             font-weight: bold;
-            text-align: left;
-            color: #ffffff; /* Default white text for flash messages */
+            text-align: left; /* Align flash message text to left */
         }
-        /* Flash message specific colors for dark theme */
+        /* Using shades of blue for info/success, and a distinct red for error */
         .flash-messages li.error {
-            background-color: #4a1c1c; /* Darker red background */
-            border: 1px solid #721c24;
-            color: #ffcccc; /* Lighter red text */
+            background-color: #f8d7da; /* Light red */
+            color: #721c24; /* Dark red */
+            border: 1px solid #f5c6cb; /* Red border */
         }
         .flash-messages li.success {
-            background-color: #1e4a1e; /* Darker green background */
-            border: 1px solid #155724;
-            color: #ccffcc; /* Lighter green text */
+            background-color: #d1ecf1; /* Light blue (info-like) */
+            color: #0c5460; /* Dark blue (info-like) */
+            border: 1px solid #bee5eb; /* Blue border */
         }
         .flash-messages li.info {
-            background-color: #1c3d5c; /* Darker blue background */
-            border: 1px solid #0c5460;
-            color: #ccf2ff; /* Lighter blue text */
+            background-color: #e2f0fb; /* Lighter blue */
+            color: #1a4f8a; /* Medium blue */
+            border: 1px solid #bce1fb; /* Blue border */
         }
-        .flash-messages li.warning {
-            background-color: #5c4f1c; /* Darker yellow background */
-            border: 1px solid #856404;
-            color: #fffac9; /* Lighter yellow text */
+        .flash-messages li.warning { /* Added specific style for warning */
+            background-color: #fff3cd; /* Light yellow */
+            color: #856404; /* Dark yellow */
+            border: 1px solid #ffeeba; /* Yellow border */
         }
         .download-links {
             margin-top: 20px;
             text-align: center;
         }
         .download-links h2 {
-            color: #ffffff; /* White for download title */
+            color: #2c3e50; /* Dark blue */
             margin-bottom: 10px;
         }
         .download-links p {
-            color: #e0e0e0; /* Light grey for download description */
+            color: #333333; /* Dark grey/black */
             margin-bottom: 15px;
         }
         .download-links a {
             display: inline-block;
-            background-color: #007bff; /* Vibrant blue for download link */
+            background-color: #0056b3; /* Light blue */
             color: white;
             padding: 10px 15px;
             border-radius: 4px;
@@ -132,35 +129,35 @@
             transition: background-color 0.3s ease;
         }
         .download-links a:hover {
-            background-color: #0056b3; /* Darker blue on hover */
+            background-color: #003d80; /* Darker blue on hover */
         }
  
         /* Styles for the Modal (Rules Popup) */
         .modal {
             display: none; /* Hidden by default */
             position: fixed; /* Stay in place */
-            z-index: 1000; /* Higher z-index to ensure it's on top */
+            z-index: 1; /* Sit on top */
             left: 0;
             top: 0;
             width: 100%; /* Full width */
             height: 100%; /* Full height */
             overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.7); /* Slightly lighter overlay */
-            justify-content: center;
-            align-items: center;
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+            justify-content: center; /* Center content */
+            align-items: center; /* Center content */
         }
         .modal-content {
-            background-color: #282828; /* Dark grey for modal content */
-            margin: auto;
-            padding: 25px;
-            border: 1px solid #555555; /* Medium grey border */
+            background-color: #fefefe;
+            margin: auto; /* Center horizontally and vertically */
+            padding: 20px;
+            border: 1px solid #888;
             border-radius: 8px;
-            width: 85%;
-            max-width: 800px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.6); /* Softer shadow */
+            width: 80%; /* Could be smaller or larger */
+            max-width: 700px; /* Max width */
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
             animation-name: animatetop;
             animation-duration: 0.4s;
-            color: #e0e0e0; /* Light grey text for modal content */
+            color: #333; /* Default text color for rules content */
         }
         /* Add Animation */
         @keyframes animatetop {
@@ -168,21 +165,19 @@
             to {top: 0; opacity: 1}
         }
         .close-button {
-            color: #e0e0e0; /* Light grey close button */
+            color: #aaa;
             float: right;
-            font-size: 30px;
+            font-size: 28px;
             font-weight: bold;
-            margin-top: -10px;
-            margin-right: -5px;
         }
         .close-button:hover,
         .close-button:focus {
-            color: #ffffff; /* White on hover */
+            color: black;
             text-decoration: none;
             cursor: pointer;
         }
         .modal-content h2 {
-            color: #007bff; /* Vibrant blue for modal title */
+            color: #2c3e50; /* Dark blue for modal title */
             margin-top: 0;
             text-align: left;
             margin-bottom: 20px;
@@ -190,46 +185,46 @@
         .modal-content ul {
             list-style-type: decimal;
             text-align: left;
-            margin-left: 25px;
+            margin-left: 25px; /* Adjust indent for list items */
             padding-left: 0;
-            color: #e0e0e0; /* Light grey for list items */
         }
         .modal-content ul li {
-            margin-bottom: 12px;
+            margin-bottom: 12px; /* More space between rules */
             line-height: 1.4;
-            font-size: 1em;
+            color: #333; /* Black for general list items */
+            font-size: 1em; /* Default font size for main list items */
         }
         .modal-content ul li strong {
-            color: #00aaff; /* Slightly lighter blue for bold text within rules for contrast */
-            font-weight: bold;
+            color: #0056b3; /* Dark blue for bold text within rules */
+            font-weight: bold; /* Explicitly ensure bold */
         }
         /* For sub-lists within rules */
         .modal-content ul ul {
-            list-style-type: disc;
+            list-style-type: disc; /* Use bullets for sub-lists */
             margin-top: 8px;
             margin-bottom: 8px;
-            margin-left: 20px;
+            margin-left: 20px; /* Indent sub-list further */
         }
         .modal-content ul ul li {
-            margin-bottom: 5px;
-            color: #cccccc; /* Medium grey for sub-list items */
-            font-size: 0.9em;
+            margin-bottom: 5px; /* Less space for sub-list items */
+            color: #333; /* Black for sub-list items */
+            font-size: 0.9em; /* One size smaller for sub-list items */
         }
         .rules-link {
             display: block;
             text-align: right;
-            margin-top: -20px;
+            margin-top: -20px; /* Adjust as needed to position it */
             margin-bottom: 15px;
         }
         .rules-link a {
-            color: #0099ff; /* Brighter blue for rules link */
+            color: #0056b3;
             text-decoration: none;
             font-weight: bold;
         }
         .rules-link a:hover {
             text-decoration: underline;
-            color: #00ccff; /* Even brighter blue on hover */
         }
+ 
     </style>
 </head>
 <body>
@@ -271,8 +266,8 @@
                 <input type="file" name="workon_file" id="workon_file" accept=".xlsx" required>
             </div>
             <div class="form-group">
-                <label for="workon_rgba_file">Upload Workon RGBA Excel File (.xlsx):</label>
-                <input type="file" name="workon_rgba_file" id="workon_rgba_file" accept=".xlsx" required>
+                <label for="workon_rgba_file">Upload Workon RGBA Excel File (.xlsx):</label> {# NEW LINE HERE #}
+                <input type="file" name="workon_rgba_file" id="workon_rgba_file" accept=".xlsx" required> {# NEW LINE HERE #}
             </div>
             <div class="form-group">
                 <label for="central_file">Upload Central Excel File (.xlsx):</label>
@@ -347,6 +342,7 @@
                         <li>Central <code>Today</code> &larr; (Today's Date)</li>
                     </ul>
                 </li>
+                {# NEW SECTION FOR WORKON RGBA #}
                 <li><strong>Workon RGBA Mandatory Columns, Filter & Mapping:</strong> The Workon RGBA file will be filtered and appended to the finalized Central File.
                     <p><strong>Filter Condition:</strong> Only records where <code>Current Assignee</code> is "VMD GS OSP-NA (GS/OMD-APAC)" will be processed.</p>
                     <p>The following columns are mapped (case-insensitive, first word matching, ignoring spaces):</p>
