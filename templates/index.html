@@ -138,7 +138,7 @@
         .download-links a:hover {
             background-color: #003d80; /* Darker blue on hover */
         }
- 
+
         /* Styles for the Modal (Rules Popup) */
         .modal {
             display: none; /* Hidden by default */
@@ -231,14 +231,14 @@
         .rules-link a:hover {
             text-decoration: underline;
         }
- 
+
     </style>
 </head>
 <body>
     <div class="container">
         <!-- Bosch Image.png added here -->
         <h1>B-SEGMENT ALLOCATION</h1>
- 
+
         <div class="rules-link">
             <a href="#" id="openRulesModal">View Rules & Instructions</a>
         </div>
@@ -252,7 +252,7 @@
                 </ul>
             {% endif %}
         {% endwith %}
- 
+
         <h2>Consolidated Data Processing</h2>
         <form action="/process" method="post" enctype="multipart/form-data">
             <div class="form-group">
@@ -290,10 +290,10 @@
             <div class="download-links">
                 <h2>Consolidated Processing Complete!</h2>
                 <p>Your processed central file is ready:</p>
-                <a href="{{ central_download_link }}" download="{{ session.get('central_output_filename', 'download.xlsx') }}">Download Updated Central File</a> {# Corrected download attribute #}
+                <a href="{{ central_download_link }}">Download Updated Central File</a>
             </div>
         {% endif %}
- 
+
         {# NEW SECTION FOR PMD LOOKUP #}
         <h2>PMD Lookup Tool</h2>
         <form action="/process_pmd_lookup" method="post" enctype="multipart/form-data">
@@ -307,17 +307,17 @@
             </div>
             <button type="submit">Process PMD Lookup</button>
         </form>
- 
+
         {% if pmd_download_link %}
             <div class="download-links">
                 <h2>PMD Lookup Complete!</h2>
                 <p>Your PMD lookup result file is ready:</p>
-                <a href="{{ pmd_download_link }}" download="{{ session.get('pmd_output_filename', 'download.xlsx') }}">Download PMD Lookup Result File</a> {# Corrected download attribute #}
+                <a href="{{ pmd_download_link }}">Download PMD Lookup Result File</a>
             </div>
         {% endif %}
- 
+
     </div>
- 
+
     <!-- The Modal (Rules Popup) -->
     <div id="rulesModal" class="modal">
         <div class="modal-content">
@@ -408,27 +408,27 @@
             </ul>
         </div>
     </div>
- 
+
     <script>
         // Get the modal
         var modal = document.getElementById("rulesModal");
- 
+
         // Get the button that opens the modal
         var btn = document.getElementById("openRulesModal");
- 
+
         // Get the <span> element that closes the modal
         var span = document.getElementsByClassName("close-button")[0];
- 
+
         // When the user clicks the button, open the modal
         btn.onclick = function() {
             modal.style.display = "flex"; // Use flex to center
         }
- 
+
         // When the user clicks on <span> (x), close the modal
         span.onclick = function() {
             modal.style.display = "none";
         }
- 
+
         // When the user clicks anywhere outside of the modal, close it
         window.onclick = function(event) {
             if (event.target == modal) {
